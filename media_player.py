@@ -157,7 +157,8 @@ ATTR_TO_PROPERTY = [
 
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, \
+                               discovery_info=None):
     _LOGGER.debug("setup starting")
     pioneer = PioneerDevice(
         hass,
@@ -212,7 +213,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 class PioneerDevice(MediaPlayerDevice):
 
-    def __init__(self, hass, name, ip, port, disabled_sources, last_radio_station, radio_stations):
+    def __init__(self, hass, name, ip, port, \
+                 disabled_sources, last_radio_station, radio_stations):
         _LOGGER.debug("Init")
         self.port = port
         self.ip = ip
@@ -255,7 +257,8 @@ class PioneerDevice(MediaPlayerDevice):
         self._radio_stations_reversed = {}
         if radio_stations:
             self._radio_stations = radio_stations
-            self._radio_stations_reversed = {value: key for key, value in radio_stations.items()}
+            self._radio_stations_reversed = \
+                {value: key for key, value in radio_stations.items()}
 
         hass.bus.async_listen(EVENT_HOMEASSISTANT_STOP, self.stop_pioneer)
 
@@ -287,11 +290,13 @@ class PioneerDevice(MediaPlayerDevice):
         while not self._stop_listen:
             if not self.hasConnection:
                 try:
-                    self.reader, self.writer = await asyncio.open_connection(self.ip, self.port)
+                    self.reader, self.writer = \
+                        await asyncio.open_connection(self.ip, self.port)
                     self.hasConnection = True
                     _LOGGER.debug("Connected to %s:%d", self.ip, self.port)
                 except:
-                    _LOGGER.error("No connection to %s:%d, retry in 30s", self.ip, self.port)
+                    _LOGGER.error("No connection to %s:%d, retry in 30s", \
+                        self.ip, self.port)
                     await asyncio.sleep(30)
                     continue
 
@@ -302,7 +307,6 @@ class PioneerDevice(MediaPlayerDevice):
                 _LOGGER.error("Lost connection!")
                 continue
 
-            #_LOGGER.debug("read "+data.decode())
             if data.decode().strip() is None:
                 await asyncio.sleep(1)
                 _LOGGER.debug("none read")
@@ -327,7 +331,9 @@ class PioneerDevice(MediaPlayerDevice):
         if self._current_radio_frequency > "":
             self._artist += " " + self._current_radio_frequency
         if self.current_radio_station in self._radio_stations_reversed.keys():
-            self._artist += " (" + self._radio_stations_reversed.get(self.current_radio_station) + ")"
+            self._artist += " (" + \
+                self._radio_stations_reversed.get(self.current_radio_station) \
+                + ")"
 
 
     def parseData(self, data):
@@ -379,7 +385,8 @@ class PioneerDevice(MediaPlayerDevice):
 
             if source_number:
                 self._selected_source_id = source_number
-                self._selected_source_name = self._source_number_to_name.get(source_number)
+                self._selected_source_name = \
+                    self._source_number_to_name.get(source_number)
                 if self._selected_source_id != SOURCE_ID_MEDIA_SERVER \
                      and self._selected_source_id != SOURCE_ID_INTERNET \
                      and self._selected_source_id != SOURCE_ID_FAVORITES \
@@ -392,7 +399,9 @@ class PioneerDevice(MediaPlayerDevice):
                         self._title = ""
 
                 if self._selected_source_name:
-                    _LOGGER.debug("Current input source: " + self._selected_source_name + " (" + source_number + ")")
+                    _LOGGER.debug("Current input source: " \
+                        + self._selected_source_name + " (" \
+                        + source_number + ")")
             else:
                 self._selected_source_name = None
             self.hasComplete = False
@@ -402,18 +411,21 @@ class PioneerDevice(MediaPlayerDevice):
             self._current_radio_station = data[2:5]
             self._artist = self._current_radio_station
             self.updateRadioDisplay()
-            _LOGGER.debug("Current radio station: " + self._current_radio_station)
+            _LOGGER.debug("Current radio station: " + \
+                self._current_radio_station)
 
         # Radio tuner frequency
         elif data[:2] == "FR":
             if data[2] == "A":
-                self._current_radio_frequency = "AM " + str(int(data[3:8])) + "kHz"
+                self._current_radio_frequency = "AM " + \
+                    str(int(data[3:8])) + "kHz"
             else:
-                self._current_radio_frequency = "FM " + str(int(data[3:6])) + "." + data[6:8] + "MHz"
+                self._current_radio_frequency = "FM " + \
+                    str(int(data[3:6])) + "." + data[6:8] + "MHz"
 
             self._artist = self._current_radio_frequency
             self.updateRadioDisplay()
-            _LOGGER.debug("Current radio freq: " + self._current_radio_frequency)
+            _LOGGER.debug("Current radio freq: "+self._current_radio_frequency)
 
 
         # Model name
@@ -506,7 +518,8 @@ class PioneerDevice(MediaPlayerDevice):
         # Current speaker
         elif data[:3] == "SPK":
             self._current_speaker = int(data[3])
-            _LOGGER.debug("Speaker: " + ACCEPTED_SPEAKER_VALUES[self._current_speaker-1])
+            _LOGGER.debug("Speaker: " + \
+                ACCEPTED_SPEAKER_VALUES[self._current_speaker-1])
 
         else:
             print (data)
@@ -516,15 +529,21 @@ class PioneerDevice(MediaPlayerDevice):
 
 
     def telnet_command(self, command):
-        #_LOGGER.debug("Command: "+command)
+        _LOGGER.debug("Command: " + command)
         if not self.writer:
             _LOGGER.error("No writer available")
+            self.hasConnection = False
             return
 
         try:
              self.writer.write(command.encode("ASCII") + b"\r")
         except (ConnectionRefusedError, OSError):
-            _LOGGER.error("Pioneer %s refused connection", self._name)
+            _LOGGER.error("Pioneer %s refused connection!", self._name)
+            self.hasConnection = False
+            return
+        except:
+            _LOGGER.error("Pioneer %s lost connection!", self._name)
+            self.hasConnection = False
             return
 
     async def async_update(self):
@@ -536,13 +555,14 @@ class PioneerDevice(MediaPlayerDevice):
 
         self.telnet_command("?P")  # Power state?
 
-        self.telnet_command("?V")  # Volume?
-        self.telnet_command("?M")  # Muted?
-        self.telnet_command("?F")  # Input source?
-        self.telnet_command("?SPK")  # Input source?
-        if self._selected_source_id == SOURCE_ID_TUNER:
-            self.telnet_command("?PR")  # Tuner preset?
-            self.telnet_command("?FR")  # Tuner frequency?
+        if self._power:
+            self.telnet_command("?V")  # Volume?
+            self.telnet_command("?M")  # Muted?
+            self.telnet_command("?F")  # Input source?
+            self.telnet_command("?SPK")  # Input source?
+            if self._selected_source_id == SOURCE_ID_TUNER:
+                self.telnet_command("?PR")  # Tuner preset?
+                self.telnet_command("?FR")  # Tuner frequency?
         return True
 
     @property
@@ -641,7 +661,7 @@ class PioneerDevice(MediaPlayerDevice):
             self.telnet_command(command)
             self.clearDisplay()
         else:
-            _LOGGER.error("No play command for source %s", self._selected_source)
+            _LOGGER.error("No play command for source %s",self._selected_source)
 
     def media_pause(self):
         """Pause playback on current source."""
@@ -660,14 +680,14 @@ class PioneerDevice(MediaPlayerDevice):
         if command>"":
             self.telnet_command(command)
         else:
-            _LOGGER.error("No pause command for source %s", self._selected_source)
-
+            _LOGGER.error("No pause command for source %s", \
+                self._selected_source)
 
     def media_previous_track(self):
         """Skip to previous track on current source."""
         command = ""
         if self._selected_source_id == SOURCE_ID_TUNER:
-            if self._current_radio_station == "A01" and self._last_radio_station:
+            if self._current_radio_station=="A01" and self._last_radio_station:
                 command = self._last_radio_station + "PR"
             else:
                 command = "TPD"
@@ -684,14 +704,15 @@ class PioneerDevice(MediaPlayerDevice):
             self.telnet_command(command)
             self.clearDisplay()
         else:
-            _LOGGER.error("No 'previous track' command for source %s", self._selected_source)
-
+            _LOGGER.error("No 'previous track' command for source %s", \
+                self._selected_source)
 
     def media_next_track(self):
         """Skip to next track on current source."""
         command = ""
         if self._selected_source_id == SOURCE_ID_TUNER:
-            if self._current_radio_station and self._current_radio_station == self._last_radio_station:
+            if self._current_radio_station \
+               and self._current_radio_station == self._last_radio_station:
                 command = "A01PR"
             else:
                 command = "TPI"
@@ -708,8 +729,8 @@ class PioneerDevice(MediaPlayerDevice):
             self.telnet_command(command)
             self.clearDisplay()
         else:
-            _LOGGER.error("No 'next track' command for source %s", self._selected_source)
-
+            _LOGGER.error("No 'next track' command for source %s", \
+                self._selected_source)
 
     def turn_off(self):
         """Turn off media player."""
@@ -730,7 +751,8 @@ class PioneerDevice(MediaPlayerDevice):
     def set_volume_level(self, volume):
         """Set volume level, range 0..1."""
         # 60dB max
-        _LOGGER.debug("Set volume to "+str(volume)+", so to "+str(round(volume * MAX_VOLUME)).zfill(3)+"VL")
+        _LOGGER.debug("Set volume to "+str(volume) \
+            +", so to "+str(round(volume * MAX_VOLUME)).zfill(3)+"VL")
         self.telnet_command(str(round(volume * MAX_VOLUME)).zfill(3) + "VL")
 
     def mute_volume(self, mute):
@@ -756,15 +778,16 @@ class PioneerDevice(MediaPlayerDevice):
 
     def select_radio_station(self, station):
         """Set radio tuner to the frequency of a named station in config."""
-        if not len(self._radio_stations) or not station in self._radio_stations.keys():
+        if not len(self._radio_stations) \
+            or not station in self._radio_stations.keys():
             _LOGGER.error("Unknown radio station '%s'", station)
         else:
             num = self._radio_stations.get(station)
             if num > "":
                 self.telnet_command(num + "PR")
                 self.clearDisplay()
-                _LOGGER.debug("Set radio preset to '%s' for station '%s'", num, station)
-
+                _LOGGER.debug("Set radio preset to '%s' for station '%s'", \
+                    num, station)
 
 
     @property
@@ -772,7 +795,6 @@ class PioneerDevice(MediaPlayerDevice):
         """Return the state attributes."""
         if self.state == STATE_OFF:
             return None
-
 
         state_attr = {
             attr: getattr(self, attr) for attr
