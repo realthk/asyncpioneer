@@ -255,6 +255,7 @@ class PioneerDevice(MediaPlayerDevice):
             self._disabled_source_list = disabled_sources
         self._radio_stations = {}
         self._radio_stations_reversed = {}
+        self._async_added = False
         if radio_stations:
             self._radio_stations = radio_stations
             self._radio_stations_reversed = \
@@ -270,6 +271,7 @@ class PioneerDevice(MediaPlayerDevice):
 
     async def async_added_to_hass(self):
         _LOGGER.debug("Async async_added_to_hass")
+        self._async_added = True
 
 
     async def getInputNames(self):
@@ -293,7 +295,7 @@ class PioneerDevice(MediaPlayerDevice):
                     self.reader, self.writer = \
                         await asyncio.open_connection(self.ip, self.port)
                     self.hasConnection = True
-                    _LOGGER.debug("Connected to %s:%d", self.ip, self.port)
+                    _LOGGER.info("Connected to %s:%d", self.ip, self.port)
                 except:
                     _LOGGER.error("No connection to %s:%d, retry in 30s", \
                         self.ip, self.port)
@@ -524,27 +526,31 @@ class PioneerDevice(MediaPlayerDevice):
         else:
             print (data)
 
-        self.async_schedule_update_ha_state()
+        if self._async_added:
+            self.async_schedule_update_ha_state()
+
         return msg
 
 
     def telnet_command(self, command):
         _LOGGER.debug("Command: " + command)
-        if not self.writer:
-            _LOGGER.error("No writer available")
-            self.hasConnection = False
-            return
 
-        try:
-             self.writer.write(command.encode("ASCII") + b"\r")
-        except (ConnectionRefusedError, OSError):
-            _LOGGER.error("Pioneer %s refused connection!", self._name)
-            self.hasConnection = False
-            return
-        except:
-            _LOGGER.error("Pioneer %s lost connection!", self._name)
-            self.hasConnection = False
-            return
+        if self.hasConnection:
+            if not self.writer:
+                _LOGGER.error("No writer available")
+                self.hasConnection = False
+                return
+
+            try:
+                 self.writer.write(command.encode("ASCII") + b"\r")
+            except (ConnectionRefusedError, OSError):
+                _LOGGER.error("Pioneer %s refused connection!", self._name)
+                self.hasConnection = False
+                return
+            except:
+                _LOGGER.error("Pioneer %s lost connection!", self._name)
+                self.hasConnection = False
+        return
 
     async def async_update(self):
         """Get the latest details from the device."""
@@ -767,8 +773,11 @@ class PioneerDevice(MediaPlayerDevice):
 
     def select_source(self, source):
         """Select input source."""
-        self.telnet_command(self._source_name_to_number.get(source) + "FN")
-        self.clearDisplay()
+        if source in self._source_name_to_number:
+            self.telnet_command(self._source_name_to_number.get(source) + "FN")
+            self.clearDisplay()
+        else:
+            _LOGGER.error("Unknown input '%s'", source)
 
     def select_speaker(self, speaker):
         """Select output speaker."""
