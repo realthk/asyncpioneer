@@ -53,7 +53,9 @@ A simple list to disable unwanted input sources, to make the source selector lis
 
 ## Services
 **pioneer_select_speaker**:
+
 Select output speaker "A", "B" or "A+B"
+
 Eg.
   ```yaml
   - service: media_player.pioneer_select_speaker
@@ -63,7 +65,9 @@ Eg.
   ```
   
 **pioneer_select_radio_station**:
+
 Select stored radio station by its name.
+
 Eg.
   ```yaml
   - service: media_player.pioneer_select_radio_station
@@ -72,7 +76,9 @@ Eg.
       station: "My favorite radio"
 ```
 **pioneer_dim_display**:
+
 Dim the FL display in 4 levels
+
 Eg.
   ```yaml
   - service: media_player.pioneer_dim_display
