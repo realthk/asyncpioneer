@@ -53,8 +53,9 @@ A simple list to disable unwanted input sources, to make the source selector lis
 
 ## Services
 **pioneer_select_speaker**:
+
 Select output speaker "A", "B" or "A+B"
-Eg.
+
   ```yaml
   - service: media_player.pioneer_select_speaker
     data:
@@ -63,14 +64,33 @@ Eg.
   ```
   
 **pioneer_select_radio_station**:
+
 Select stored radio station by its name.
-Eg.
+
   ```yaml
   - service: media_player.pioneer_select_radio_station
     data:
       entity_id: media_player.pioneer_avr
       station: "My favorite radio"
+```
+**pioneer_dim_display**:
+
+Dim the FL display in 4 levels
+
+  ```yaml
+  - service: media_player.pioneer_dim_display
+    data:
+      entity_id: media_player.pioneer_avr
+      dim_display: 2
   ```
+ where possible values for display brightness:
+
+dim_display | Result
+------------- | -------------
+0 | Maximum brightness
+1 | Bright display
+2 | Dim display
+3 | Display off
   
 ## State attributes
 **current_radio_station**:
@@ -78,5 +98,8 @@ The currently selected radio station code, like "B07"
 
 **current_speaker**:
 The currently selected output speaker: "A", "B" or "A+B"
+  ```yaml
+{{ state_attr("media_player.pioneer_avr", "current_speaker") }}
+```
 
   
