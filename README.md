@@ -98,6 +98,8 @@ The currently selected radio station code, like "B07"
 
 **current_speaker**:
 The currently selected output speaker: "A", "B" or "A+B"
-
+  ```yaml
+{{ state_attr("media_player.pioneer_avr", "current_speaker") }}
+```
 
   
