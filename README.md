@@ -70,7 +70,21 @@ Eg.
     data:
       entity_id: media_player.pioneer_avr
       station: "My favorite radio"
+```
+**pioneer_dim_display**:
+Dim the FL display in 4 levels
+Eg.
+  ```yaml
+  - service: media_player.pioneer_dim_displaydim_display
+    data:
+      entity_id: media_player.pioneer_avr
+      dim_display: 2
   ```
+  where possible values for display brightness:
+  0 = Maximum
+  1 = Bright
+  2 = Dim
+  3 = Off
   
 ## State attributes
 **current_radio_station**:
@@ -78,5 +92,6 @@ The currently selected radio station code, like "B07"
 
 **current_speaker**:
 The currently selected output speaker: "A", "B" or "A+B"
+
 
   
