@@ -96,6 +96,8 @@ ATTR_SPEAKER = 'speaker'
 SERVICE_SELECT_SPEAKER = 'pioneer_select_speaker'
 ATTR_STATION = 'station'
 SERVICE_SELECT_RADIO_STATION = 'pioneer_select_radio_station'
+ATTR_DIM_DISPLAY = 'dim_display'
+SERVICE_DIM_DISPLAY = 'pioneer_dim_display'
 
 SUPPORT_PIONEER = SUPPORT_PAUSE | SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | \
                   SUPPORT_TURN_ON | SUPPORT_TURN_OFF | \
@@ -121,6 +123,11 @@ pioneer_speaker_schema = MEDIA_PLAYER_SCHEMA.extend({
 pioneer_radio_station_schema = MEDIA_PLAYER_SCHEMA.extend({
     vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
     vol.Required(ATTR_STATION): cv.string
+})
+
+pioneer_dim_display_schema = MEDIA_PLAYER_SCHEMA.extend({
+    vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+    vol.Required(ATTR_DIM_DISPLAY): vol.In([0, 1, 2, 3])
 })
 
 ATTR_CURRENT_RADIO_STATION = 'current_radio_station'
@@ -200,6 +207,10 @@ async def async_setup_platform(hass, config, async_add_entities, \
                 station = service.data.get(ATTR_STATION)
                 device.select_radio_station(station)
 
+            if service.service == SERVICE_DIM_DISPLAY:
+                dim_display = service.data.get(ATTR_DIM_DISPLAY)
+                device.dim_display(dim_display)
+
             device.async_schedule_update_ha_state(True)
 
     hass.services.async_register(
@@ -209,6 +220,10 @@ async def async_setup_platform(hass, config, async_add_entities, \
     hass.services.async_register(
         DOMAIN, SERVICE_SELECT_RADIO_STATION, async_service_handler,
         schema=pioneer_radio_station_schema)
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_DIM_DISPLAY, async_service_handler,
+        schema=pioneer_dim_display_schema)
 
 
 class PioneerDevice(MediaPlayerDevice):
@@ -798,6 +813,9 @@ class PioneerDevice(MediaPlayerDevice):
                 _LOGGER.debug("Set radio preset to '%s' for station '%s'", \
                     num, station)
 
+    def dim_display(self, dim_display):
+        """Dims the display"""
+        self.telnet_command(str(dim_display)+"SAA")
 
     @property
     def state_attributes(self):
