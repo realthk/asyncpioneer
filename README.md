@@ -75,16 +75,19 @@ Eg.
 Dim the FL display in 4 levels
 Eg.
   ```yaml
-  - service: media_player.pioneer_dim_displaydim_display
+  - service: media_player.pioneer_dim_display
     data:
       entity_id: media_player.pioneer_avr
       dim_display: 2
   ```
-  where possible values for display brightness:
-  0 = Maximum
-  1 = Bright
-  2 = Dim
-  3 = Off
+ where possible values for display brightness:
+
+dim_display  | Result
+------------- | -------------
+0 | Maximum brightness
+1 | Bright display
+2 | Dim display
+3 | Display off
   
 ## State attributes
 **current_radio_station**:
