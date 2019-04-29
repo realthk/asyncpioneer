@@ -1,0 +1,8 @@
+{
+  "domain": "pioneer",
+  "name": "Async Pioneer",
+  "documentation": "https://github.com/realthk/asyncpioneer",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": []
+}
