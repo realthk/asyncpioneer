@@ -13,7 +13,7 @@ I recommend the [Mini Media Player](https://github.com/kalkih/mini-media-player)
 
 ## Install
 
-1. Download and copy [media_player.py](https://github.com/realthk/asyncpioneer/blob/master/media_player.py) into `config/custom_components/asyncpioneer` directory.
+1. Download and copy [media_player.py](https://github.com/realthk/asyncpioneer/blob/master/media_player.py) and [__init__.py](https://github.com/realthk/asyncpioneer/blob/master/__init__.py)into `config/custom_components/asyncpioneer` directory.
 
 2. Add a reference to this inside your `configuration.yaml`:
 
