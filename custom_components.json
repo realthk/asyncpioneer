@@ -1,0 +1,11 @@
+{
+    "asyncpioneer": {
+        "version": "1.0.0",
+        "local_location": "/custom_components/asyncpioneer/media_player.py",
+        "remote_location": "https://github.com/realthk/asyncpioneer/blob/master/media_player.py",
+        "visit_repo": "https://github.com/realthk/asyncpioneer",
+        "resources": [
+            "https://github.com/realthk/asyncpioneer/blob/master/manifest.json"
+        ]
+    }
+}
