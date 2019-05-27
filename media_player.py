@@ -98,6 +98,8 @@ ATTR_STATION = 'station'
 SERVICE_SELECT_RADIO_STATION = 'pioneer_select_radio_station'
 ATTR_DIM_DISPLAY = 'dim_display'
 SERVICE_DIM_DISPLAY = 'pioneer_dim_display'
+ATTR_HDMI_OUT = 'hdmi_out'
+SERVICE_SELECT_HDMI_OUT = 'pioneer_select_hdmi_out'
 
 SUPPORT_PIONEER = SUPPORT_PAUSE | SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | \
                   SUPPORT_TURN_ON | SUPPORT_TURN_OFF | \
@@ -120,6 +122,12 @@ pioneer_speaker_schema = MEDIA_PLAYER_SCHEMA.extend({
     vol.Required(ATTR_SPEAKER): vol.In(ACCEPTED_SPEAKER_VALUES)
 })
 
+ACCEPTED_HDMI_OUT_VALUES = ['1+2 ON', '1 ON', '2 ON', '1/2 OFF']
+pioneer_hdmi_out_schema = MEDIA_PLAYER_SCHEMA.extend({
+    vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+    vol.Required(ATTR_HDMI_OUT): vol.In(ACCEPTED_HDMI_OUT_VALUES)
+})
+
 pioneer_radio_station_schema = MEDIA_PLAYER_SCHEMA.extend({
     vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
     vol.Required(ATTR_STATION): cv.string
@@ -132,6 +140,7 @@ pioneer_dim_display_schema = MEDIA_PLAYER_SCHEMA.extend({
 
 ATTR_CURRENT_RADIO_STATION = 'current_radio_station'
 ATTR_CURRENT_SPEAKER = 'current_speaker'
+ATTR_CURRENT_HDMI_OUT = 'current_hdmi_out'
 
 ATTR_TO_PROPERTY = [
     ATTR_MEDIA_VOLUME_LEVEL,
@@ -160,6 +169,7 @@ ATTR_TO_PROPERTY = [
     ATTR_MEDIA_SHUFFLE,
     ATTR_CURRENT_RADIO_STATION,
     ATTR_CURRENT_SPEAKER,
+    ATTR_CURRENT_HDMI_OUT,
 ]
 
 
@@ -211,6 +221,10 @@ async def async_setup_platform(hass, config, async_add_entities, \
                 dim_display = service.data.get(ATTR_DIM_DISPLAY)
                 device.dim_display(dim_display)
 
+            if service.service == SERVICE_SELECT_HDMI_OUT:
+                hdmi_out = service.data.get(ATTR_HDMI_OUT)
+                device.select_hdmi_out(hdmi_out)
+
             device.async_schedule_update_ha_state(True)
 
     hass.services.async_register(
@@ -224,6 +238,10 @@ async def async_setup_platform(hass, config, async_add_entities, \
     hass.services.async_register(
         DOMAIN, SERVICE_DIM_DISPLAY, async_service_handler,
         schema=pioneer_dim_display_schema)
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_SELECT_HDMI_OUT, async_service_handler,
+        schema=pioneer_hdmi_out_schema)
 
 
 class PioneerDevice(MediaPlayerDevice):
@@ -265,6 +283,7 @@ class PioneerDevice(MediaPlayerDevice):
         self._current_radio_frequency = ""
         self._last_radio_station = last_radio_station
         self._current_speaker = ""
+        self._current_hdmi_out = ""
         self._stop_listen = False
         if disabled_sources:
             self._disabled_source_list = disabled_sources
@@ -538,6 +557,11 @@ class PioneerDevice(MediaPlayerDevice):
             _LOGGER.debug("Speaker: " + \
                 ACCEPTED_SPEAKER_VALUES[self._current_speaker-1])
 
+        elif data[:2] == "HO":
+            self._current_hdmi_out = int(data[2])
+            _LOGGER.debug("HDMI out: " + \
+                ACCEPTED_HDMI_OUT_VALUES[self._current_hdmi_out])
+
         else:
             print (data)
 
@@ -584,6 +608,8 @@ class PioneerDevice(MediaPlayerDevice):
             if self._selected_source_id == SOURCE_ID_TUNER:
                 self.telnet_command("?PR")  # Tuner preset?
                 self.telnet_command("?FR")  # Tuner frequency?
+            else:
+                self.telnet_command("?HO")  # HDMI out?
         return True
 
     @property
@@ -663,6 +689,14 @@ class PioneerDevice(MediaPlayerDevice):
         if self._current_speaker:
             return ACCEPTED_SPEAKER_VALUES[self._current_speaker-1]
         return ""
+
+    @property
+    def current_hdmi_out(self):
+        """Return the current HDMI out."""
+        if self._current_hdmi_out:
+            return ACCEPTED_HDMI_OUT_VALUES[self._current_hdmi_out]
+        return ""
+
 
     def media_play(self):
         """Start or resume playback on current source."""
@@ -812,6 +846,14 @@ class PioneerDevice(MediaPlayerDevice):
                 self.clearDisplay()
                 _LOGGER.debug("Set radio preset to '%s' for station '%s'", \
                     num, station)
+
+    def select_hdmi_out(self, hdmi_out):
+        """Select hdmi output."""
+        _LOGGER.debug("HDMI command received '%s'", hdmi_out)
+        if hdmi_out in ACCEPTED_HDMI_OUT_VALUES:
+            index = ACCEPTED_HDMI_OUT_VALUES.index(hdmi_out)
+            _LOGGER.debug("HDMI command will be '%d'", index)
+            self.telnet_command(str(index)+"HO")
 
     def dim_display(self, dim_display):
         """Dims the display"""

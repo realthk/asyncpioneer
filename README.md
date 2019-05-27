@@ -62,6 +62,24 @@ Select output speaker "A", "B" or "A+B"
       entity_id: media_player.pioneer_avr
       speaker: "A+B"
   ```
+
+**pioneer_select_hdmi_out**:
+
+Select HDMI output
+
+  ```yaml
+  - service: media_player.pioneer_select_hdmi_out
+    data:
+      entity_id: media_player.pioneer_avr
+      hdmi_out: "1+2 ON"
+  ```
+where possible values for hdmi_out:
+
+- "1+2 ON"
+- "1 ON"
+- "2 ON"
+- "1/2 OFF"
+ 
   
 **pioneer_select_radio_station**:
 
@@ -102,4 +120,9 @@ The currently selected output speaker: "A", "B" or "A+B"
 {{ state_attr("media_player.pioneer_avr", "current_speaker") }}
 ```
 
+**current_hdmi_out**:
+The currently selected HDMI output: "1+2 ON", "1 ON", "2 ON", "1/2 OFF"
+  ```yaml
+{{ state_attr("media_player.pioneer_avr", "current_hdmi_out") }}
+```
   
