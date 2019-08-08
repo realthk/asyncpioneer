@@ -7,7 +7,6 @@ import voluptuous as vol
 
 from homeassistant.components.media_player import (
     PLATFORM_SCHEMA,
-    MEDIA_PLAYER_SCHEMA,
     MediaPlayerDevice)
 
 from homeassistant.components.media_player.const import (
@@ -106,6 +105,10 @@ SUPPORT_PIONEER = SUPPORT_PAUSE | SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | \
                   SUPPORT_SELECT_SOURCE | SUPPORT_PLAY | \
                   SUPPORT_PLAY_MEDIA | \
                   SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
+
+MEDIA_PLAYER_SCHEMA = vol.Schema({
+    ATTR_ENTITY_ID: cv.comp_entity_ids,
+})
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_HOST): cv.string,
