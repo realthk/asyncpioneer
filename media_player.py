@@ -44,11 +44,16 @@ from homeassistant.components.media_player.const import (
 
 from homeassistant.const import (
     ATTR_ENTITY_ID, CONF_HOST, CONF_NAME, CONF_PORT, STATE_OFF, STATE_ON,
-    EVENT_HOMEASSISTANT_STOP
+    EVENT_HOMEASSISTANT_STOP,
+    CONF_ZONE
 )
 
 import homeassistant.helpers.config_validation as cv
 from time import sleep
+
+CONF_INVALID_ZONES_ERR = "Invalid Zone (expected Zone2 or HDZone)"
+CONF_VALID_ZONES = ["Main", "Zone2", "HDZone"]
+CONF_ZONES = "zones"
 
 SOURCE_ID_PHONO         = "00"
 SOURCE_ID_CD            = "01"
@@ -74,6 +79,9 @@ SOURCE_ID_PANDORA       = "41"
 SOURCE_ID_MEDIA_SERVER  = "44"
 SOURCE_ID_FAVORITES     = "45"
 
+VALID_ZONE2_SOURCES =  ["04", "06", "15", "26", "38", "40", "41", "44", "45", "17", "13", "05", "01", "02", "33"]
+VALID_HDZONE_SOURCES = ["04", "06", "15", "19", "20", "21", "22", "23", "24", "25", "34", "26", "38", "41", "41", "44", "45", "17", "13"]
+
 DEFAULT_SOURCES = [SOURCE_ID_BD, SOURCE_ID_DVD, SOURCE_ID_SAT,
     SOURCE_ID_HDMI1, SOURCE_ID_HDMI2, SOURCE_ID_HDMI3, SOURCE_ID_HDMI4,
     SOURCE_ID_HDMI5, SOURCE_ID_HDMI6, SOURCE_ID_INTERNET, SOURCE_ID_MEDIA_SERVER,
@@ -83,6 +91,8 @@ DEFAULT_SOURCES = [SOURCE_ID_BD, SOURCE_ID_DVD, SOURCE_ID_SAT,
 _LOGGER = logging.getLogger(__name__)
 
 MAX_VOLUME = 185
+MAX_ZONE_VOLUME = 81
+
 DEFAULT_NAME = 'Pioneer AVR'
 DEFAULT_PORT = 8102   # Most Pioneer AVRs now use 8102
 
@@ -110,6 +120,13 @@ MEDIA_PLAYER_SCHEMA = vol.Schema({
     ATTR_ENTITY_ID: cv.comp_entity_ids,
 })
 
+ZONE_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_ZONE): vol.In(CONF_VALID_ZONES, CONF_INVALID_ZONES_ERR),
+        vol.Optional(CONF_NAME): cv.string,
+    }
+)
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_HOST): cv.string,
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -117,6 +134,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_DISABLED_SOURCES): [cv.string],
     vol.Optional(CONF_LAST_RADIO_STATION): cv.string,
     vol.Optional(CONF_RADIO_STATIONS): {cv.string: cv.string},
+    vol.Optional(CONF_ZONES): vol.All(cv.ensure_list, [ZONE_SCHEMA]),
 })
 
 ACCEPTED_SPEAKER_VALUES = ['A', 'B', 'A+B']
@@ -180,6 +198,21 @@ ATTR_TO_PROPERTY = [
 async def async_setup_platform(hass, config, async_add_entities, \
                                discovery_info=None):
     _LOGGER.debug("setup starting")
+    devices = []
+
+    if hass.data.get(DATA_PIONEER) is None:
+        hass.data[DATA_PIONEER] = {}
+
+    hasZones = False
+    zones = config.get(CONF_ZONES)
+    if zones is not None:
+        hasZones = True
+        add_zones = {}
+        for entry in zones:
+            add_zones[entry[CONF_ZONE]] = entry.get(CONF_NAME)
+    else:
+        add_zones = None
+
     pioneer = PioneerDevice(
         hass,
         config.get(CONF_NAME),
@@ -187,18 +220,35 @@ async def async_setup_platform(hass, config, async_add_entities, \
         config.get(CONF_PORT),
         config.get(CONF_DISABLED_SOURCES),
         config.get(CONF_LAST_RADIO_STATION),
-        config.get(CONF_RADIO_STATIONS)
+        config.get(CONF_RADIO_STATIONS),
+        "Main",
+        hasZones
         )
 
-#    asyncio.ensure_future(pioneer.readdata())
     hass.loop.create_task(pioneer.readdata())
 
-    if DATA_PIONEER not in hass.data:
-        hass.data[DATA_PIONEER] = []
-    hass.data[DATA_PIONEER].append(pioneer)
+    hass.data[DATA_PIONEER][1] = pioneer
+    devices.append(pioneer)
 
-    _LOGGER.debug("adding pio entity")
-    async_add_entities([pioneer], update_before_add=False)
+    for zone in add_zones.keys():
+        _LOGGER.debug(f"adding new zone '{zone}'")
+        pioneer_z = PioneerDevice(
+            hass,
+            config.get(CONF_NAME),
+            config.get(CONF_HOST),
+            config.get(CONF_PORT),
+            config.get(CONF_DISABLED_SOURCES),
+            config.get(CONF_LAST_RADIO_STATION),
+            config.get(CONF_RADIO_STATIONS),
+            zone,
+            hasZones
+            )
+        hass.loop.create_task(pioneer_z.readdata())
+        hass.data[DATA_PIONEER][2] = pioneer_z
+        devices.append(pioneer_z)
+
+    _LOGGER.debug("adding pio devices")
+    async_add_entities(devices, update_before_add=False)
 
 
 
@@ -250,7 +300,7 @@ async def async_setup_platform(hass, config, async_add_entities, \
 class PioneerDevice(MediaPlayerDevice):
 
     def __init__(self, hass, name, ip, port, \
-                 disabled_sources, last_radio_station, radio_stations):
+                 disabled_sources, last_radio_station, radio_stations, zone, hasZones):
         _LOGGER.debug("Init")
         self.port = port
         self.ip = ip
@@ -293,6 +343,9 @@ class PioneerDevice(MediaPlayerDevice):
         self._radio_stations = {}
         self._radio_stations_reversed = {}
         self._async_added = False
+        self._hasZones = hasZones
+        self._zone = zone
+        self._zone_index = CONF_VALID_ZONES.index(zone)
         if radio_stations:
             self._radio_stations = radio_stations
             self._radio_stations_reversed = \
@@ -307,12 +360,12 @@ class PioneerDevice(MediaPlayerDevice):
 
 
     async def async_added_to_hass(self):
-        _LOGGER.debug("Async async_added_to_hass")
+        _LOGGER.debug(f"{self._zone} Async async_added_to_hass")
         self._async_added = True
 
 
     async def getInputNames(self):
-        _LOGGER.debug("Get Names")
+        _LOGGER.debug(f"{self._zone} Get Names")
         self.telnet_command("?RGD")
         hasNames = True
         for source in DEFAULT_SOURCES:
@@ -332,9 +385,9 @@ class PioneerDevice(MediaPlayerDevice):
                     self.reader, self.writer = \
                         await asyncio.open_connection(self.ip, self.port)
                     self.hasConnection = True
-                    _LOGGER.info("Connected to %s:%d", self.ip, self.port)
+                    _LOGGER.info(f"{self._zone} Connected to %s:%d", self.ip, self.port)
                 except:
-                    _LOGGER.error("No connection to %s:%d, retry in 30s", \
+                    _LOGGER.error(f"{self._zone} No connection to %s:%d, retry in 30s", \
                         self.ip, self.port)
                     await asyncio.sleep(30)
                     continue
@@ -419,8 +472,13 @@ class PioneerDevice(MediaPlayerDevice):
                 msg = data
 
         # Selected input source
-        elif data[:2] == "FN":
-            source_number = data[2:4]
+        elif (data[:2] == "FN" and self._zone == "Main") \
+          or (data[:3] == "Z2F" and self._zone == "Zone2") \
+          or (data[:3] == "ZEA" and self._zone == "HDZone"):
+            if self._zone == "Main":
+                source_number = data[2:4]
+            else: 
+                source_number = data[3:5]
 
             if source_number:
                 self._selected_source_id = source_number
@@ -438,7 +496,7 @@ class PioneerDevice(MediaPlayerDevice):
                         self._title = ""
 
                 if self._selected_source_name:
-                    _LOGGER.debug("Current input source: " \
+                    _LOGGER.debug(f"Current {self._zone} input source: " \
                         + self._selected_source_name + " (" \
                         + source_number + ")")
             else:
@@ -473,6 +531,8 @@ class PioneerDevice(MediaPlayerDevice):
             name = m.group(1)
             if name and name>"":
                 self._name = "Pioneer " + name
+            if self._hasZones:
+                self._name += (" " + self._zone)
 
             _LOGGER.debug("Name: " + name)
 
@@ -485,7 +545,8 @@ class PioneerDevice(MediaPlayerDevice):
             _LOGGER.debug("Input " + source_number + " = '" + source_name + "'")
 
         # Power state
-        elif data[:3] == "PWR":
+        elif (data[:3] == "PWR" and self._zone == "Main") or (data[:3] == "APR" and self._zone == "Zone2") \
+          or (data[:3] == "ZEP" and self._zone == "HDZone"):
             if data[3] == "1":
                 self._power = False
             else:
@@ -499,8 +560,13 @@ class PioneerDevice(MediaPlayerDevice):
                 self._zone2power = True
 
         # Is muted
-        elif data[:3] == "MUT":
+        elif data[:3] == "MUT" and self._zone == "Main":
             if data[3] == "1":
+                self._muted = False
+            else:
+                self._muted = True
+        elif (data[:5] == "Z2MUT" and self._zone == "Zone2") or (data[:5] == "HZMUT" and self._zone == "HDZone"):
+            if data[5] == "1":
                 self._muted = False
             else:
                 self._muted = True
@@ -550,8 +616,14 @@ class PioneerDevice(MediaPlayerDevice):
                 _LOGGER.debug("Bitrate: " + self._bitrate)
 
         # Volume level
-        elif data[:3] == "VOL":
+        elif data[:3] == "VOL" and self._zone == "Main":
             self._volume = int(data[3:6]) / MAX_VOLUME
+            _LOGGER.debug("Volume: " + str(round(self._volume*100))+"%")
+        elif (data[:2] == "ZV" and self._zone == "Zone2"):
+            self._volume = int(data[2:4]) / MAX_ZONE_VOLUME
+            _LOGGER.debug("Volume: " + str(round(self._volume*100))+"%")
+        elif (data[:3] == "HZV" and self._zone == "HDZone"):
+            self._volume = int(data[3:5]) / MAX_ZONE_VOLUME
             _LOGGER.debug("Volume: " + str(round(self._volume*100))+"%")
 
         # Current speaker
@@ -575,7 +647,7 @@ class PioneerDevice(MediaPlayerDevice):
 
 
     def telnet_command(self, command):
-        _LOGGER.debug("Command: " + command)
+        _LOGGER.debug(f"{self._zone} Command: " + command)
 
         if self.hasConnection:
             if not self.writer:
@@ -596,18 +668,32 @@ class PioneerDevice(MediaPlayerDevice):
 
     async def async_update(self):
         """Get the latest details from the device."""
-        _LOGGER.debug("Update")
+        _LOGGER.debug(f"{self._zone} Update")
         if not self.hasNames:
             await asyncio.sleep(1)
             await self.getInputNames()
 
-        self.telnet_command("?P")  # Power state?
+        # Power state?
+        commands = ["?P", "?AP", "?ZEP"]
+        self.telnet_command(commands[self._zone_index])  
 
         if self._power:
-            self.telnet_command("?V")  # Volume?
-            self.telnet_command("?M")  # Muted?
-            self.telnet_command("?F")  # Input source?
-            self.telnet_command("?SPK")  # Input source?
+            # Volume?
+            commands = ["?V", "?ZV", "?HZV"] 
+            self.telnet_command(commands[self._zone_index])  
+
+            # Muted?
+            commands = ["?M", "?Z2M", "?HZM"] 
+            self.telnet_command(commands[self._zone_index])  
+
+            # Input source?
+            commands = ["?F", "?ZS", "?ZEA"] 
+            self.telnet_command(commands[self._zone_index])  
+
+            if self._zone == "Main":
+                # Speaker?
+                self.telnet_command("?SPK") 
+
             if self._selected_source_id == SOURCE_ID_TUNER:
                 self.telnet_command("?PR")  # Tuner preset?
                 self.telnet_command("?FR")  # Tuner frequency?
@@ -653,6 +739,10 @@ class PioneerDevice(MediaPlayerDevice):
         if len(self._disabled_source_list) and len(self._source_name_to_number):
             enabled_sources = {}
             for name, number in self._source_name_to_number.items():
+                if self._zone == "Zone2" and number not in VALID_ZONE2_SOURCES:
+                    continue
+                if self._zone == "HDZone" and number not in VALID_HDZONE_SOURCES:
+                    continue
                 if name not in self._disabled_source_list:
                     enabled_sources[name] = number
             return list(enabled_sources.keys())
@@ -792,41 +882,60 @@ class PioneerDevice(MediaPlayerDevice):
 
     def turn_off(self):
         """Turn off media player."""
-        _LOGGER.debug("Turn off ")
+        _LOGGER.debug(f"{self._zone} Turn off ")
         self.clearDisplay()
-        self.telnet_command("PF")
+        commands = ["PF", "APF", "ZEF"]
+        self.telnet_command(commands[self._zone_index])
 
     def volume_up(self):
         """Volume up media player."""
         _LOGGER.debug("Volume up ")
-        self.telnet_command("VU")
+        commands = ["VU", "ZU", "HZU"]
+        self.telnet_command(commands[self._zone_index])
 
     def volume_down(self):
         """Volume down media player."""
         _LOGGER.debug("Volume down ")
-        self.telnet_command("VD")
+        commands = ["VD", "ZD", "HZD"]
+        self.telnet_command(commands[self._zone_index])
 
     def set_volume_level(self, volume):
         """Set volume level, range 0..1."""
         # 60dB max
-        _LOGGER.debug("Set volume to "+str(volume) \
-            +", so to "+str(round(volume * MAX_VOLUME)).zfill(3)+"VL")
-        self.telnet_command(str(round(volume * MAX_VOLUME)).zfill(3) + "VL")
+        if self._zone == "Main":
+            _LOGGER.debug("Set volume to "+str(volume) \
+                +", so to "+str(round(volume * MAX_VOLUME)).zfill(3)+"VL")
+            self.telnet_command(str(round(volume * MAX_VOLUME)).zfill(3) + "VL")
+        elif self._zone == "Zone2":
+            _LOGGER.debug("Set Zone2 volume to "+str(volume) \
+                +", so to ZV"+str(round(volume * MAX_ZONE_VOLUME)).zfill(2))
+            self.telnet_command("ZV" + str(round(volume * MAX_ZONE_VOLUME)).zfill(2))
+        elif self._zone == "HDZone":
+            _LOGGER.debug("Set HDZone volume to "+str(volume) \
+                +", so to "+str(round(volume * MAX_ZONE_VOLUME)).zfill(2)+"HZV")
+            self.telnet_command(str(round(volume * MAX_ZONE_VOLUME)).zfill(2) + "HZV")
 
     def mute_volume(self, mute):
         """Mute (true) or unmute (false) media player."""
-        self.telnet_command("MO" if mute else "MF")
+        if self._zone == "Main":
+            self.telnet_command("MO" if mute else "MF")
+        elif self._zone == "Zone2":
+            self.telnet_command("Z2MO" if mute else "Z2MF")
+        elif self._zone == "HDZone":
+            self.telnet_command("HZMO" if mute else "HZMF")
 
     def turn_on(self):
         """Turn the media player on."""
-        _LOGGER.debug("Turn on ")
+        _LOGGER.debug(f"{self._zone} Turn on ")
         self.clearDisplay()
-        self.telnet_command("PO")
+        commands = ["PO", "APO", "ZEO"]
+        self.telnet_command(commands[self._zone_index])
 
     def select_source(self, source):
         """Select input source."""
         if source in self._source_name_to_number:
-            self.telnet_command(self._source_name_to_number.get(source) + "FN")
+            commands = ["FN", "ZS", "ZEA"]
+            self.telnet_command(self._source_name_to_number.get(source) + commands[self._zone_index])
             self.clearDisplay()
         else:
             _LOGGER.error("Unknown input '%s'", source)
