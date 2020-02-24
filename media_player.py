@@ -102,7 +102,9 @@ CONF_LAST_RADIO_STATION = 'last_radio_station'
 
 DATA_PIONEER = 'pioneer'
 ATTR_SPEAKER = 'speaker'
+ATTR_SPEAKER_CONFIG = 'speaker_config'
 SERVICE_SELECT_SPEAKER = 'pioneer_select_speaker'
+SERVICE_SELECT_SPEAKER_CONFIG = 'pioneer_select_speaker_config'
 ATTR_STATION = 'station'
 SERVICE_SELECT_RADIO_STATION = 'pioneer_select_radio_station'
 ATTR_DIM_DISPLAY = 'dim_display'
@@ -149,6 +151,12 @@ pioneer_hdmi_out_schema = MEDIA_PLAYER_SCHEMA.extend({
     vol.Required(ATTR_HDMI_OUT): vol.In(ACCEPTED_HDMI_OUT_VALUES)
 })
 
+ACCEPTED_SPEAKER_CONFIG_VALUES = ['Height', 'Wide', 'SPK B', 'Bi Amp', 'Zone 2', 'HDZone']
+pioneer_speaker_config_schema = MEDIA_PLAYER_SCHEMA.extend({
+    vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+    vol.Required(ATTR_SPEAKER_CONFIG): vol.In(ACCEPTED_SPEAKER_CONFIG_VALUES)
+})
+
 pioneer_radio_station_schema = MEDIA_PLAYER_SCHEMA.extend({
     vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
     vol.Required(ATTR_STATION): cv.string
@@ -161,6 +169,7 @@ pioneer_dim_display_schema = MEDIA_PLAYER_SCHEMA.extend({
 
 ATTR_CURRENT_RADIO_STATION = 'current_radio_station'
 ATTR_CURRENT_SPEAKER = 'current_speaker'
+ATTR_CURRENT_SPEAKER_CONFIG = 'current_speaker_config'
 ATTR_CURRENT_HDMI_OUT = 'current_hdmi_out'
 
 ATTR_TO_PROPERTY = [
@@ -200,8 +209,11 @@ async def async_setup_platform(hass, config, async_add_entities, \
     _LOGGER.debug("setup starting")
     devices = []
 
-    if hass.data.get(DATA_PIONEER) is None:
-        hass.data[DATA_PIONEER] = {}
+#    if hass.data.get(DATA_PIONEER) is None:
+#        hass.data[DATA_PIONEER] = {}
+
+    if DATA_PIONEER not in hass.data:
+        hass.data[DATA_PIONEER] = []
 
     hasZones = False
     zones = config.get(CONF_ZONES)
@@ -227,14 +239,14 @@ async def async_setup_platform(hass, config, async_add_entities, \
 
     hass.loop.create_task(pioneer.readdata())
 
-    hass.data[DATA_PIONEER][1] = pioneer
+    hass.data[DATA_PIONEER].append(pioneer)
     devices.append(pioneer)
 
     for zone in add_zones.keys():
         _LOGGER.debug(f"adding new zone '{zone}'")
         pioneer_z = PioneerDevice(
             hass,
-            config.get(CONF_NAME),
+            config.get(CONF_NAME) + "_" + zone,
             config.get(CONF_HOST),
             config.get(CONF_PORT),
             config.get(CONF_DISABLED_SOURCES),
@@ -244,7 +256,7 @@ async def async_setup_platform(hass, config, async_add_entities, \
             hasZones
             )
         hass.loop.create_task(pioneer_z.readdata())
-        hass.data[DATA_PIONEER][2] = pioneer_z
+        hass.data[DATA_PIONEER].append(pioneer_z)
         devices.append(pioneer_z)
 
     _LOGGER.debug("adding pio devices")
@@ -266,6 +278,10 @@ async def async_setup_platform(hass, config, async_add_entities, \
                 speaker = service.data.get(ATTR_SPEAKER)
                 device.select_speaker(speaker)
 
+            if service.service == SERVICE_SELECT_SPEAKER_CONFIG:
+                speaker_config = service.data.get(ATTR_SPEAKER_CONFIG)
+                device.select_speaker_config(speaker_config)
+
             if service.service == SERVICE_SELECT_RADIO_STATION:
                 station = service.data.get(ATTR_STATION)
                 device.select_radio_station(station)
@@ -283,6 +299,10 @@ async def async_setup_platform(hass, config, async_add_entities, \
     hass.services.async_register(
         DOMAIN, SERVICE_SELECT_SPEAKER, async_service_handler,
         schema=pioneer_speaker_schema)
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_SELECT_SPEAKER_CONFIG, async_service_handler,
+        schema=pioneer_speaker_config_schema)
 
     hass.services.async_register(
         DOMAIN, SERVICE_SELECT_RADIO_STATION, async_service_handler,
@@ -369,6 +389,13 @@ class PioneerDevice(MediaPlayerDevice):
         self.telnet_command("?RGD")
         hasNames = True
         for source in DEFAULT_SOURCES:
+            if self._zone == "Zone2":
+                if source not in VALID_ZONE2_SOURCES:
+                    continue
+            elif self._zone == "HDZone":
+                if source not in VALID_HDZONE_SOURCES:
+                    continue
+
             if source not in self._source_number_to_name:
                 self.telnet_command("?RGB" + source)
                 sleep(0.15)
@@ -909,7 +936,7 @@ class PioneerDevice(MediaPlayerDevice):
         elif self._zone == "Zone2":
             _LOGGER.debug("Set Zone2 volume to "+str(volume) \
                 +", so to ZV"+str(round(volume * MAX_ZONE_VOLUME)).zfill(2))
-            self.telnet_command("ZV" + str(round(volume * MAX_ZONE_VOLUME)).zfill(2))
+            self.telnet_command(str(round(volume * MAX_ZONE_VOLUME)).zfill(2) + "ZV")
         elif self._zone == "HDZone":
             _LOGGER.debug("Set HDZone volume to "+str(volume) \
                 +", so to "+str(round(volume * MAX_ZONE_VOLUME)).zfill(2)+"HZV")
@@ -945,6 +972,13 @@ class PioneerDevice(MediaPlayerDevice):
         if speaker in ACCEPTED_SPEAKER_VALUES:
             index = ACCEPTED_SPEAKER_VALUES.index(speaker)
             self.telnet_command(str(index+1)+"SPK")
+            
+    def select_speaker_config(self, speaker_config):
+        """Select speaker config mode."""
+        _LOGGER.debug(f"Speaker config '{speaker_config}'")
+        if speaker_config in ACCEPTED_SPEAKER_CONFIG_VALUES:
+            index = ACCEPTED_SPEAKER_CONFIG_VALUES.index(speaker_config)
+            self.telnet_command("0"+str(index)+"SSF")
 
     def select_radio_station(self, station):
         """Set radio tuner to the frequency of a named station in config."""
