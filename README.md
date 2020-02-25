@@ -109,6 +109,26 @@ dim_display | Result
 1 | Bright display
 2 | Dim display
 3 | Display off
+
+**pioneer_select_speaker_config**:
+
+Configures the speaker arrangement setting of the amp. While I have speakers in the bedroom with "Zone 2" setting, for watching film in the living room, "Height" setting is also useful, but it's too complicated to change this setting with the remote control. With this service call, it is possible to change  this config from a Home Assistant automation.
+
+  ```yaml
+  - service: media_player.pioneer_select_speaker_config
+    data:
+      entity_id: media_player.pioneer_avr
+      speaker_config: "Height"
+  ```
+ where possible values for speaker_config:
+
+- "Height"
+- "Wide" 
+- "SPK B"
+- "Bi Amp"
+- "Zone 2"
+- "HDZone"
+  
   
 ## State attributes
 **current_radio_station**:
