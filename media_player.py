@@ -7,7 +7,7 @@ import voluptuous as vol
 
 from homeassistant.components.media_player import (
     PLATFORM_SCHEMA,
-    MediaPlayerDevice)
+    MediaPlayerEntity)
 
 from homeassistant.components.media_player.const import (
     SUPPORT_PAUSE, SUPPORT_PLAY, SUPPORT_SELECT_SOURCE,
@@ -317,7 +317,7 @@ async def async_setup_platform(hass, config, async_add_entities, \
         schema=pioneer_hdmi_out_schema)
 
 
-class PioneerDevice(MediaPlayerDevice):
+class PioneerDevice(MediaPlayerEntity):
 
     def __init__(self, hass, name, ip, port, \
                  disabled_sources, last_radio_station, radio_stations, zone, hasZones):
@@ -905,7 +905,7 @@ class PioneerDevice(MediaPlayerDevice):
             self.clearDisplay()
         else:
             _LOGGER.error("No 'next track' command for source %s", \
-                self._selected_source)
+                self._selected_source_name)
 
     def turn_off(self):
         """Turn off media player."""
