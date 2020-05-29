@@ -59,7 +59,7 @@ Zone2 or HDZone can be switched on here. It creates another instance of media_pl
       - zone: "Zone2"
         name: "Zone 2"
   ```
-
+(name: can be whatever, not in use yet)
 
 ## Services
 **pioneer_select_speaker**:
