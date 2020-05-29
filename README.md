@@ -51,6 +51,16 @@ You can name the stored stations here, because not every radio use RDS. Dictiona
 **disabled_sources**:
 A simple list to disable unwanted input sources, to make the source selector list shorter.
 
+**zones**:
+Zone2 or HDZone can be switched on here. It creates another instance of media_player with "\_zone2" or "\_hdzone" added to the name. Eq. if the main device is _media_player.pioneer_avr_, zone 2 will be named as _media_player.pioneer_avr_zone2_
+
+  ```yaml
+    zones:
+      - zone: "Zone2"
+        name: "Zone 2"
+  ```
+
+
 ## Services
 **pioneer_select_speaker**:
 
