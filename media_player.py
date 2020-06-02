@@ -96,6 +96,7 @@ MAX_ZONE_VOLUME = 81
 DEFAULT_NAME = 'Pioneer AVR'
 DEFAULT_PORT = 8102   # Most Pioneer AVRs now use 8102
 
+CONF_SERIAL_BRIDGE      = 'serial_bridge'
 CONF_DISABLED_SOURCES   = 'disabled_sources'
 CONF_RADIO_STATIONS     = 'radio_stations'
 CONF_LAST_RADIO_STATION = 'last_radio_station'
@@ -133,6 +134,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_HOST): cv.string,
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+    vol.Optional(CONF_SERIAL_BRIDGE, default=False): cv.boolean,
     vol.Optional(CONF_DISABLED_SOURCES): [cv.string],
     vol.Optional(CONF_LAST_RADIO_STATION): cv.string,
     vol.Optional(CONF_RADIO_STATIONS): {cv.string: cv.string},
@@ -230,6 +232,7 @@ async def async_setup_platform(hass, config, async_add_entities, \
         config.get(CONF_NAME),
         config.get(CONF_HOST),
         config.get(CONF_PORT),
+        config.get(CONF_SERIAL_BRIDGE),
         config.get(CONF_DISABLED_SOURCES),
         config.get(CONF_LAST_RADIO_STATION),
         config.get(CONF_RADIO_STATIONS),
@@ -250,6 +253,7 @@ async def async_setup_platform(hass, config, async_add_entities, \
                 config.get(CONF_NAME) + "_" + zone,
                 config.get(CONF_HOST),
                 config.get(CONF_PORT),
+                config.get(CONF_SERIAL_BRIDGE),
                 config.get(CONF_DISABLED_SOURCES),
                 config.get(CONF_LAST_RADIO_STATION),
                 config.get(CONF_RADIO_STATIONS),
@@ -320,11 +324,12 @@ async def async_setup_platform(hass, config, async_add_entities, \
 
 class PioneerDevice(MediaPlayerEntity):
 
-    def __init__(self, hass, name, ip, port, \
+    def __init__(self, hass, name, ip, port, serial_bridge,\
                  disabled_sources, last_radio_station, radio_stations, zone, hasZones):
         _LOGGER.debug("Init")
         self.port = port
         self.ip = ip
+        self.serial_bridge = serial_bridge
         self.hasConnection = False
         self.newDisplay = True
         self.hasComplete = False
@@ -685,6 +690,8 @@ class PioneerDevice(MediaPlayerEntity):
 
             try:
                  self.writer.write(command.encode("ASCII") + b"\r")
+                 if self.serial_bridge:
+                    sleep(0.1)
             except (ConnectionRefusedError, OSError):
                 _LOGGER.error("Pioneer %s refused connection!", self._name)
                 self.hasConnection = False
