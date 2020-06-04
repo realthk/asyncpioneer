@@ -22,6 +22,9 @@ media_player:
   - platform: asyncpioneer
     host: 192.168.8.121
     port: 8102
+
+    # Options
+    serial_bridge: true
     last_radio_station: "D06"
     radio_stations:
        "Bartok"          : "B02"
@@ -41,6 +44,9 @@ media_player:
   ```
 
 ## Options
+**serial_bridge**:
+If set to `true`, a 100ms delay will be added between sequential telnet commands.  This pause is necessary for those connecting connecting to their amp with an RS-232 to Ethernet bridge.  Without the delay, the connection to the amp becomes unreliable and eventually fails. Default value, if not specified in `configuration.yaml`, is `false`.
+
 **last_radio_station**:
 If not set, "next track" button in radio tuner mode will simply send "next station" command to the amp, which is not convenient, if you only have a few stations stored in the amp's memory.
 If this is set to eg. "B03", then sending a "next track" command when listening to "B03" will result in a "select A01 station" command. Likewise, a "previous track" on "A01" results in "select B03 station".
