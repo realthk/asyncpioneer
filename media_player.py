@@ -82,6 +82,65 @@ SOURCE_ID_FAVORITES     = "45"
 VALID_ZONE2_SOURCES =  ["04", "06", "15", "26", "38", "40", "41", "44", "45", "17", "13", "05", "01", "02", "33"]
 VALID_HDZONE_SOURCES = ["04", "06", "15", "19", "20", "21", "22", "23", "24", "25", "34", "26", "38", "41", "41", "44", "45", "17", "13"]
 
+LISTENING_MODES = {
+	"0001": "STEREO",
+	"0010": "STANDARD",
+	"0009": "STEREO",
+	"0011": "2ch",
+	"0013": "PRO LOGIC2 MOVIE",
+	"0018": "PRO LOGIC2x MOVIE",
+	"0014": "PRO LOGIC2 MUSIC",
+	"0019": "PRO LOGIC2x MUSIC",
+	"0015": "PRO LOGIC2 GAME",
+	"0020": "PRO LOGIC2x GAME",
+	"0031": "PRO LOGIC2z HEIGHT",
+	"0032": "WIDE SURROUND MOVIE",
+	"0033": "WIDE SURROUND MUSIC",
+	"0012": "PRO LOGIC",
+	"0016": "Neo:6 CINEMA",
+	"0017": "Neo:6 MUSIC",
+	"0037": "Neo:X CINEMA",
+	"0038": "Neo:X MUSIC",
+	"0039": "Neo:X GAME",
+	"0040": "Dolby Surround",
+	"0021": "Multi ch",
+	"0022": "DOLBY EX",
+	"0023": "PRO LOGIC2x MOVIE",
+	"0024": "PRO LOGIC2x MUSIC",
+	"0034": "PRO LOGIC2z HEIGHT",
+	"0035": "WIDE SURROUND MOVIE",
+	"0036": "WIDE SURROUND MUSIC",
+	"0025": "DTS-ES Neo",
+	"0026": "DTS-ES matrix",
+	"0027": "DTS-ES discrete",
+	"0030": "DTS-ES 8ch discrete",
+	"0043": "Neo:X CINEMA ",
+	"0044": "Neo:X MUSIC",
+	"0045": "Neo:X GAME",
+	"0050": "Dolby Surround",
+	"0100": "ADVANCED SURROUND",
+	"0101": "ACTION",
+	"0103": "DRAMA",
+	"0118": "ADVANCED GAME",
+	"0117": "SPORTS",
+	"0107": "CLASSICAL",
+	"0110": "ROCK/POP",
+	"0112": "EXTENDED STEREO",
+	"0003": "Front Stage Surround Advance",
+	"0200": "ECO MODE",
+	"0212": "ECO MODE 1",
+	"0213": "ECO MODE 2",
+	"0153": "RETRIEVER AIR",
+	"0113": "PHONES SURROUND",
+	"0005": "AUTO SURR/STREAM DIRECT",
+	"0006": "AUTO SURROUND",
+	"0151": "Auto Level Control",
+	"0007": "DIRECT",
+	"0008": "PURE DIRECT",
+	"0152": "OPTIMUM SURROUND"
+}
+
+
 DEFAULT_SOURCES = [SOURCE_ID_BD, SOURCE_ID_DVD, SOURCE_ID_SAT,
     SOURCE_ID_HDMI1, SOURCE_ID_HDMI2, SOURCE_ID_HDMI3, SOURCE_ID_HDMI4,
     SOURCE_ID_HDMI5, SOURCE_ID_HDMI6, SOURCE_ID_INTERNET, SOURCE_ID_MEDIA_SERVER,
@@ -112,6 +171,7 @@ ATTR_DIM_DISPLAY = 'dim_display'
 SERVICE_DIM_DISPLAY = 'pioneer_dim_display'
 ATTR_HDMI_OUT = 'hdmi_out'
 SERVICE_SELECT_HDMI_OUT = 'pioneer_select_hdmi_out'
+SERVICE_SELECT_SOUND_MODE = 'select_sound_mode'
 
 SUPPORT_PIONEER = SUPPORT_PAUSE | SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | \
                   SUPPORT_TURN_ON | SUPPORT_TURN_OFF | \
@@ -153,6 +213,11 @@ pioneer_hdmi_out_schema = MEDIA_PLAYER_SCHEMA.extend({
     vol.Required(ATTR_HDMI_OUT): vol.In(ACCEPTED_HDMI_OUT_VALUES)
 })
 
+pioneer_select_sound_mode_schema = MEDIA_PLAYER_SCHEMA.extend({
+    vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+    vol.Required(ATTR_SOUND_MODE): cv.string
+})
+
 ACCEPTED_SPEAKER_CONFIG_VALUES = ['Height', 'Wide', 'SPK B', 'Bi Amp', 'Zone 2', 'HDZone']
 pioneer_speaker_config_schema = MEDIA_PLAYER_SCHEMA.extend({
     vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
@@ -173,6 +238,7 @@ ATTR_CURRENT_RADIO_STATION = 'current_radio_station'
 ATTR_CURRENT_SPEAKER = 'current_speaker'
 ATTR_CURRENT_SPEAKER_CONFIG = 'current_speaker_config'
 ATTR_CURRENT_HDMI_OUT = 'current_hdmi_out'
+ATTR_CURRENT_SOUND_MODE = 'current_sound_mode'
 
 ATTR_TO_PROPERTY = [
     ATTR_MEDIA_VOLUME_LEVEL,
@@ -202,8 +268,8 @@ ATTR_TO_PROPERTY = [
     ATTR_CURRENT_RADIO_STATION,
     ATTR_CURRENT_SPEAKER,
     ATTR_CURRENT_HDMI_OUT,
+    ATTR_CURRENT_SOUND_MODE,
 ]
-
 
 
 async def async_setup_platform(hass, config, async_add_entities, \
@@ -299,6 +365,10 @@ async def async_setup_platform(hass, config, async_add_entities, \
                 hdmi_out = service.data.get(ATTR_HDMI_OUT)
                 device.select_hdmi_out(hdmi_out)
 
+            if service.service == SERVICE_SELECT_SOUND_MODE:
+                sound_mode = service.data.get(ATTR_SOUND_MODE)
+                device.select_sound_mode(sound_mode)                
+
             device.async_schedule_update_ha_state(True)
 
     hass.services.async_register(
@@ -320,6 +390,10 @@ async def async_setup_platform(hass, config, async_add_entities, \
     hass.services.async_register(
         DOMAIN, SERVICE_SELECT_HDMI_OUT, async_service_handler,
         schema=pioneer_hdmi_out_schema)
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_SELECT_SOUND_MODE, async_service_handler,
+        schema=pioneer_select_sound_mode_schema)
 
 
 class PioneerDevice(MediaPlayerEntity):
@@ -364,6 +438,7 @@ class PioneerDevice(MediaPlayerEntity):
         self._current_speaker = ""
         self._current_hdmi_out = ""
         self._stop_listen = False
+        self._current_sound_mode = ""
         if disabled_sources:
             self._disabled_source_list = disabled_sources
         self._radio_stations = {}
@@ -670,6 +745,12 @@ class PioneerDevice(MediaPlayerEntity):
             _LOGGER.debug("HDMI out: " + \
                 ACCEPTED_HDMI_OUT_VALUES[self._current_hdmi_out])
 
+        # Sound mode
+        elif data[:2] == "SR":                
+            self._current_sound_mode = data[2:6]
+            _LOGGER.debug("Sound mode: " + \
+                LISTENING_MODES[self._current_sound_mode])            
+
         else:
             print (data)
 
@@ -734,6 +815,9 @@ class PioneerDevice(MediaPlayerEntity):
                 self.telnet_command("?FR")  # Tuner frequency?
             else:
                 self.telnet_command("?HO")  # HDMI out?
+
+            self.telnet_command("?S")       # Sound mode?
+
         return True
 
     @property
@@ -824,6 +908,13 @@ class PioneerDevice(MediaPlayerEntity):
         if self._current_hdmi_out:
             return ACCEPTED_HDMI_OUT_VALUES[self._current_hdmi_out]
         return ""
+
+    @property
+    def current_sound_mode(self):
+        """Return the current HDMI out."""
+        if self._current_sound_mode:
+            return LISTENING_MODES[self._current_sound_mode]
+        return ""        
 
 
     def media_play(self):
@@ -1008,6 +1099,18 @@ class PioneerDevice(MediaPlayerEntity):
             index = ACCEPTED_HDMI_OUT_VALUES.index(hdmi_out)
             _LOGGER.debug("HDMI command will be '%d'", index)
             self.telnet_command(str(index)+"HO")
+
+    def select_sound_mode(self, sound_mode):
+        """Select sound mode"""
+        _LOGGER.debug("Sound mode command received '%s'", sound_mode)
+        foundMode = False
+        for code, name in LISTENING_MODES.items():
+            if name == sound_mode:
+                foundMode = True
+                _LOGGER.debug("Sound mode command will be '%s'", code)
+                self.telnet_command(code+"SR")
+        if not foundMode:        
+            _LOGGER.debug("Cannot find code for sound mode '%s'", sound_mode)
 
     def dim_display(self, dim_display):
         """Dims the display"""

@@ -144,7 +144,75 @@ Configures the speaker arrangement setting of the amp. While I have speakers in 
 - "Bi Amp"
 - "Zone 2"
 - "HDZone"
-  
+
+**select_sound_mode**:
+
+Select sound mode
+
+  ```yaml
+  - service: media_player.select_sound_mode
+    data:
+      entity_id: media_player.pioneer_avr
+      sound_mode: "AUTO SURROUND"
+  ```
+where possible values for sound_mode:
+
+- "STEREO"
+- "STANDARD"
+- "STEREO"
+- "2ch"
+- "PRO LOGIC2 MOVIE"
+- "PRO LOGIC2x MOVIE"
+- "PRO LOGIC2 MUSIC"
+- "PRO LOGIC2x MUSIC"
+- "PRO LOGIC2 GAME"
+- "PRO LOGIC2x GAME"
+- "PRO LOGIC2z HEIGHT"
+- "WIDE SURROUND MOVIE"
+- "WIDE SURROUND MUSIC"
+- "PRO LOGIC"
+- "Neo:6 CINEMA"
+- "Neo:6 MUSIC"
+- "Neo:X CINEMA"
+- "Neo:X MUSIC"
+- "Neo:X GAME"
+- "Dolby Surround"
+- "Multi ch"
+- "DOLBY EX"
+- "PRO LOGIC2x MOVIE"
+- "PRO LOGIC2x MUSIC"
+- "PRO LOGIC2z HEIGHT"
+- "WIDE SURROUND MOVIE"
+- "WIDE SURROUND MUSIC"
+- "DTS-ES Neo"
+- "DTS-ES matrix"
+- "DTS-ES discrete"
+- "DTS-ES 8ch discrete"
+- "Neo:X CINEMA "
+- "Neo:X MUSIC"
+- "Neo:X GAME"
+- "Dolby Surround"
+- "ADVANCED SURROUND"
+- "ACTION"
+- "DRAMA"
+- "ADVANCED GAME"
+- "SPORTS"
+- "CLASSICAL"
+- "ROCK/POP"
+- "EXTENDED STEREO"
+- "Front Stage Surround Advance"
+- "ECO MODE"
+- "ECO MODE 1"
+- "ECO MODE 2"
+- "RETRIEVER AIR"
+- "PHONES SURROUND"
+- "AUTO SURR/STREAM DIRECT"
+- "AUTO SURROUND"
+- "Auto Level Control"
+- "DIRECT"
+- "PURE DIRECT"
+- "OPTIMUM SURROUND"
+ 
   
 ## State attributes
 **current_radio_station**:
@@ -162,3 +230,8 @@ The currently selected HDMI output: "1+2 ON", "1 ON", "2 ON", "1/2 OFF"
 {{ state_attr("media_player.pioneer_avr", "current_hdmi_out") }}
 ```
   
+**current_sound_mode**:
+The currently selected sound_mode: "AUTO SURROUND", "STEREO", "PRO LOGIC", etc (from the service "select_sound_mode")
+  ```yaml
+{{ state_attr("media_player.pioneer_avr", "current_sound_mode") }}
+```
