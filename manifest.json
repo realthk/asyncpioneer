@@ -4,5 +4,6 @@
   "documentation": "https://github.com/realthk/asyncpioneer",
   "requirements": [],
   "dependencies": [],
-  "codeowners": []
+  "codeowners": [],
+  "version": "0.5.0"
 }
