@@ -160,7 +160,7 @@ CONF_DISABLED_SOURCES   = 'disabled_sources'
 CONF_RADIO_STATIONS     = 'radio_stations'
 CONF_LAST_RADIO_STATION = 'last_radio_station'
 
-DATA_PIONEER = 'pioneer'
+DATA_PIONEER = 'asyncpioneer'
 ATTR_SPEAKER = 'speaker'
 ATTR_SPEAKER_CONFIG = 'speaker_config'
 SERVICE_SELECT_SPEAKER = 'pioneer_select_speaker'
