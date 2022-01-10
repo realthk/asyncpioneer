@@ -159,6 +159,7 @@ CONF_SERIAL_BRIDGE      = 'serial_bridge'
 CONF_DISABLED_SOURCES   = 'disabled_sources'
 CONF_RADIO_STATIONS     = 'radio_stations'
 CONF_LAST_RADIO_STATION = 'last_radio_station'
+CONF_INPUTS             = 'inputs'
 
 DATA_PIONEER = 'pioneer'
 ATTR_SPEAKER = 'speaker'
@@ -199,6 +200,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_LAST_RADIO_STATION): cv.string,
     vol.Optional(CONF_RADIO_STATIONS): {cv.string: cv.string},
     vol.Optional(CONF_ZONES): vol.All(cv.ensure_list, [ZONE_SCHEMA]),
+    vol.Optional(CONF_INPUTS): {cv.string: cv.string},
 })
 
 ACCEPTED_SPEAKER_VALUES = ['A', 'B', 'A+B']
@@ -303,7 +305,8 @@ async def async_setup_platform(hass, config, async_add_entities, \
         config.get(CONF_LAST_RADIO_STATION),
         config.get(CONF_RADIO_STATIONS),
         "Main",
-        hasZones
+        hasZones,
+        config.get(CONF_INPUTS),
         )
 
     hass.loop.create_task(pioneer.readdata())
@@ -399,7 +402,7 @@ async def async_setup_platform(hass, config, async_add_entities, \
 class PioneerDevice(MediaPlayerEntity):
 
     def __init__(self, hass, name, ip, port, serial_bridge,\
-                 disabled_sources, last_radio_station, radio_stations, zone, hasZones):
+                 disabled_sources, last_radio_station, radio_stations, zone, hasZones, inputs):
         _LOGGER.debug("Init")
         self.port = port
         self.ip = ip
@@ -447,6 +450,10 @@ class PioneerDevice(MediaPlayerEntity):
         self._hasZones = hasZones
         self._zone = zone
         self._zone_index = CONF_VALID_ZONES.index(zone)
+        if inputs:
+            self.hasNames = True
+            self._source_number_to_name = inputs
+            self._source_name_to_number = {v: k for k, v in inputs.items()}
         if radio_stations:
             self._radio_stations = radio_stations
             self._radio_stations_reversed = \
@@ -635,8 +642,8 @@ class PioneerDevice(MediaPlayerEntity):
 
         # Model name
         elif data[:3] == "RGD":
-            m = re.search('<([a-zA-Z0-9_\-\/]{5,})\>', data[3:-2])
-            name = m.group(1)
+            m = re.search('<([a-zA-Z0-9_\-\/]{5,})\s*\>', data[3:-2])
+            name = m.group(1) if m else None
             if name and name>"":
                 self._name = "Pioneer " + name
             if self._hasZones:
@@ -655,7 +662,7 @@ class PioneerDevice(MediaPlayerEntity):
         # Power state
         elif (data[:3] == "PWR" and self._zone == "Main") or (data[:3] == "APR" and self._zone == "Zone2") \
           or (data[:3] == "ZEP" and self._zone == "HDZone"):
-            if data[3] == "1":
+            if data[3] == "1" or data[3] == "2":
                 self._power = False
             else:
                 self._power = True
