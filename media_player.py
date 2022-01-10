@@ -411,6 +411,7 @@ class PioneerDevice(MediaPlayerEntity):
         self.newDisplay = True
         self.hasComplete = False
         self.hasNames = False
+        self.hasDeviceName = False
         self._name = name
         self.data = []
         self.reader = None
@@ -474,7 +475,6 @@ class PioneerDevice(MediaPlayerEntity):
 
     async def getInputNames(self):
         _LOGGER.debug(f"{self._zone} Get Names")
-        self.telnet_command("?RGD")
         hasNames = True
         for source in DEFAULT_SOURCES:
             if self._zone == "Zone2":
@@ -642,6 +642,7 @@ class PioneerDevice(MediaPlayerEntity):
 
         # Model name
         elif data[:3] == "RGD":
+            self.hasDeviceName = True
             m = re.search('<([a-zA-Z0-9_\-\/]{5,})\s*\>', data[3:-2])
             name = m.group(1) if m else None
             if name and name>"":
@@ -687,7 +688,7 @@ class PioneerDevice(MediaPlayerEntity):
                 self._muted = True
 
         # Playing state
-        elif data[:3] == "GCH":
+        elif re.match('GC[HP]', data[:3]):
             mode = data[3:5]
             if mode == "02":
                 self._media_state = "Playing"
@@ -703,7 +704,7 @@ class PioneerDevice(MediaPlayerEntity):
                 self._media_state = "Unknown ("+data[3:5]+")"
 
         # Metadata
-        elif data[:3] == "GEH":
+        elif re.match('GE[HP]', data[:3]):
             type = data[6:8]
             if type == "00":      # No data yet
                 pass
@@ -792,6 +793,10 @@ class PioneerDevice(MediaPlayerEntity):
     async def async_update(self):
         """Get the latest details from the device."""
         _LOGGER.debug(f"{self._zone} Update")
+
+        if not self.hasDeviceName:
+            self.telnet_command("?RGD")
+
         if not self.hasNames:
             await asyncio.sleep(1)
             await self.getInputNames()
