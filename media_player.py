@@ -327,7 +327,8 @@ async def async_setup_platform(hass, config, async_add_entities, \
                 config.get(CONF_LAST_RADIO_STATION),
                 config.get(CONF_RADIO_STATIONS),
                 zone,
-                hasZones
+                hasZones,
+                config.get(CONF_INPUTS),
                 )
             hass.loop.create_task(pioneer_z.readdata())
             hass.data[DATA_PIONEER].append(pioneer_z)
@@ -370,7 +371,7 @@ async def async_setup_platform(hass, config, async_add_entities, \
 
             if service.service == SERVICE_SELECT_SOUND_MODE:
                 sound_mode = service.data.get(ATTR_SOUND_MODE)
-                device.select_sound_mode(sound_mode)                
+                device.select_sound_mode(sound_mode)
 
             device.async_schedule_update_ha_state(True)
 
@@ -592,7 +593,7 @@ class PioneerDevice(MediaPlayerEntity):
           or (data[:3] == "ZEA" and self._zone == "HDZone"):
             if self._zone == "Main":
                 source_number = data[2:4]
-            else: 
+            else:
                 source_number = data[3:5]
 
             if source_number:
@@ -754,10 +755,10 @@ class PioneerDevice(MediaPlayerEntity):
                 ACCEPTED_HDMI_OUT_VALUES[self._current_hdmi_out])
 
         # Sound mode
-        elif data[:2] == "SR":                
+        elif data[:2] == "SR":
             self._current_sound_mode = data[2:6]
             _LOGGER.debug("Sound mode: " + \
-                LISTENING_MODES[self._current_sound_mode])            
+                LISTENING_MODES[self._current_sound_mode])
 
         else:
             print (data)
@@ -803,24 +804,24 @@ class PioneerDevice(MediaPlayerEntity):
 
         # Power state?
         commands = ["?P", "?AP", "?ZEP"]
-        self.telnet_command(commands[self._zone_index])  
+        self.telnet_command(commands[self._zone_index])
 
         if self._power:
             # Volume?
-            commands = ["?V", "?ZV", "?HZV"] 
-            self.telnet_command(commands[self._zone_index])  
+            commands = ["?V", "?ZV", "?HZV"]
+            self.telnet_command(commands[self._zone_index])
 
             # Muted?
-            commands = ["?M", "?Z2M", "?HZM"] 
-            self.telnet_command(commands[self._zone_index])  
+            commands = ["?M", "?Z2M", "?HZM"]
+            self.telnet_command(commands[self._zone_index])
 
             # Input source?
-            commands = ["?F", "?ZS", "?ZEA"] 
-            self.telnet_command(commands[self._zone_index])  
+            commands = ["?F", "?ZS", "?ZEA"]
+            self.telnet_command(commands[self._zone_index])
 
             if self._zone == "Main":
                 # Speaker?
-                self.telnet_command("?SPK") 
+                self.telnet_command("?SPK")
 
             if self._selected_source_id == SOURCE_ID_TUNER:
                 self.telnet_command("?PR")  # Tuner preset?
@@ -926,7 +927,7 @@ class PioneerDevice(MediaPlayerEntity):
         """Return the current HDMI out."""
         if self._current_sound_mode:
             return LISTENING_MODES[self._current_sound_mode]
-        return ""        
+        return ""
 
 
     def media_play(self):
@@ -1083,7 +1084,7 @@ class PioneerDevice(MediaPlayerEntity):
         if speaker in ACCEPTED_SPEAKER_VALUES:
             index = ACCEPTED_SPEAKER_VALUES.index(speaker)
             self.telnet_command(str(index+1)+"SPK")
-            
+
     def select_speaker_config(self, speaker_config):
         """Select speaker config mode."""
         _LOGGER.debug(f"Speaker config '{speaker_config}'")
@@ -1121,7 +1122,7 @@ class PioneerDevice(MediaPlayerEntity):
                 foundMode = True
                 _LOGGER.debug("Sound mode command will be '%s'", code)
                 self.telnet_command(code+"SR")
-        if not foundMode:        
+        if not foundMode:
             _LOGGER.debug("Cannot find code for sound mode '%s'", sound_mode)
 
     def dim_display(self, dim_display):
