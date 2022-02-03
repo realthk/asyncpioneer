@@ -487,7 +487,7 @@ class PioneerDevice(MediaPlayerEntity):
 
             if source not in self._source_number_to_name:
                 self.telnet_command("?RGB" + source)
-                sleep(0.15)
+                await asyncio.sleep(0.15)
                 hasNames = False
         self.hasNames = hasNames
 
