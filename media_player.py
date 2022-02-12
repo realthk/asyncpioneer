@@ -760,7 +760,7 @@ class PioneerDevice(MediaPlayerEntity):
                 LISTENING_MODES[self._current_sound_mode])
 
         else:
-            print (data)
+            _LOGGER.debug("Received unknown data: " + data)
 
         if self._async_added:
             self.async_schedule_update_ha_state()
