@@ -1,6 +1,6 @@
 import asyncio
+import async_timeout
 import logging
-import math
 import re
 
 import voluptuous as vol
@@ -25,13 +25,11 @@ from homeassistant.components.media_player.const import (
     ATTR_MEDIA_CONTENT_ID,
     ATTR_MEDIA_CONTENT_TYPE,
     ATTR_MEDIA_DURATION,
-    ATTR_MEDIA_ENQUEUE,
     ATTR_MEDIA_EPISODE,
     ATTR_MEDIA_PLAYLIST,
     ATTR_MEDIA_POSITION,
     ATTR_MEDIA_POSITION_UPDATED_AT,
     ATTR_MEDIA_SEASON,
-    ATTR_MEDIA_SEEK_POSITION,
     ATTR_MEDIA_SERIES_TITLE,
     ATTR_MEDIA_SHUFFLE,
     ATTR_MEDIA_TITLE,
@@ -151,6 +149,9 @@ _LOGGER = logging.getLogger(__name__)
 
 MAX_VOLUME = 185
 MAX_ZONE_VOLUME = 81
+
+CONNECT_RETRY_SECS = 15
+TIMEOUT_SECS = 10
 
 DEFAULT_NAME = 'Pioneer AVR'
 DEFAULT_PORT = 8102   # Most Pioneer AVRs now use 8102
@@ -410,7 +411,6 @@ class PioneerDevice(MediaPlayerEntity):
         self.serial_bridge = serial_bridge
         self.hasConnection = False
         self.newDisplay = True
-        self.hasComplete = False
         self.hasNames = False
         self.hasDeviceName = False
         self._name = name
@@ -493,42 +493,44 @@ class PioneerDevice(MediaPlayerEntity):
 
 
     async def readdata(self):
-        _LOGGER.debug("Readdata")
+        _LOGGER.debug(f"{self._zone} Readdata")
 
         while not self._stop_listen:
             if not self.hasConnection:
                 try:
-                    self.reader, self.writer = \
-                        await asyncio.open_connection(self.ip, self.port)
+                    with async_timeout.timeout(TIMEOUT_SECS):
+                        self.reader, self.writer = \
+                            await asyncio.open_connection(self.ip, self.port)
                     self.hasConnection = True
                     _LOGGER.info(f"{self._zone} Connected to %s:%d", self.ip, self.port)
                 except:
-                    _LOGGER.error(f"{self._zone} No connection to %s:%d, retry in 30s", \
+                    _LOGGER.info(f"{self._zone} No connection to %s:%d, retry in {CONNECT_RETRY_SECS}s", \
                         self.ip, self.port)
-                    await asyncio.sleep(30)
+                    await asyncio.sleep(CONNECT_RETRY_SECS)
                     continue
 
             try:
-                data = await self.reader.readuntil(b'\n')
+                with async_timeout.timeout(TIMEOUT_SECS):
+                    data = await self.reader.readuntil(b'\n')
             except:
                 self.hasConnection = False
-                _LOGGER.error("Lost connection!")
+                _LOGGER.info(f"{self._zone} Lost connection!")
                 continue
 
             if data.decode().strip() is None:
                 await asyncio.sleep(1)
                 _LOGGER.debug("none read")
                 continue
+
             self.parseData(data.decode())
 
-        _LOGGER.debug("Finished Readdata")
+        _LOGGER.debug(f"Finished {self._zone} Readdata")
         return True
 
     def clearDisplay(self):
         self._artist = ""
         self._album = ""
         self._title = ""
-        self.hasComplete = False
         self._display = ""
         self.__display = ""
 
@@ -549,10 +551,14 @@ class PioneerDevice(MediaPlayerEntity):
 
         # Fluorescent display content
         if data[:2]=="FL":
+            if self._zone!="Main":
+                self._display = ""
+                return ""
+
             rest = data[2:]
             while len(rest)>=2:
                 a = rest[:2]
-                if a>"0A":
+                if a>"0A" and a!="91":
                     n = int("0x"+a, 16)
                     msg +=chr(n)
                 rest = rest[2:]
@@ -561,7 +567,6 @@ class PioneerDevice(MediaPlayerEntity):
                 if not msg.strip():
                     self.newDisplay = True
                     self._display = self.__display
-                    self.hasComplete = True
                 else:
                     if self.newDisplay:
                         self.newDisplay = False
@@ -579,11 +584,12 @@ class PioneerDevice(MediaPlayerEntity):
 
                         if pos>-1:
                             self.__display += msg[-x:]
+                        else:
+                            self.__display = msg
 
-                if not self.hasComplete:
+                if self._display.find(self.__display)==-1 and self._display.strip()!=self.__display.strip():
                     self._display = self.__display
-                _LOGGER.debug("Display: "+self._display)
-
+                    _LOGGER.debug("Display: "+self._display)
             else:
                 msg = data
 
@@ -617,7 +623,6 @@ class PioneerDevice(MediaPlayerEntity):
                         + source_number + ")")
             else:
                 self._selected_source_name = None
-            self.hasComplete = False
 
         # Radio tuner preset number
         elif data[:2] == "PR":
@@ -789,10 +794,14 @@ class PioneerDevice(MediaPlayerEntity):
             except:
                 _LOGGER.error("Pioneer %s lost connection!", self._name)
                 self.hasConnection = False
+                self.clearDisplay()
         return
 
     async def async_update(self):
         """Get the latest details from the device."""
+        if not self.hasConnection:
+            return False
+
         _LOGGER.debug(f"{self._zone} Update")
 
         if not self.hasDeviceName:
