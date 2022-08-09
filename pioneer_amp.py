@@ -3,7 +3,7 @@ import async_timeout
 import logging
 import re
 from time import sleep
-#from .media_player import PioneerDevice
+
 from .const import (
     TIMEOUT_SECS, CONNECT_RETRY_SECS,
     MAX_VOLUME, MAX_ZONE_VOLUME, 
@@ -29,10 +29,10 @@ class PioneerAmp():
         self.newDisplay = True
         self.hasNames = False
         self.hasDeviceName = False
-        self.name = ""
         self.data = []
         self.reader = None
         self.writer = None
+        self._name = ""
         self._display = ""
         self.__display = ""
         self._title = ""
@@ -114,17 +114,11 @@ class PioneerAmp():
         _LOGGER.debug("Readdata finished")
         return True
 
+
     async def getInputNames(self):
         _LOGGER.debug("Get Names")
         hasNames = True
         for source in DEFAULT_SOURCES:
-            if self._zone == "Zone2":
-                if source not in VALID_ZONE2_SOURCES:
-                    continue
-            elif self._zone == "HDZone":
-                if source not in VALID_HDZONE_SOURCES:
-                    continue
-
             if source not in self._source_number_to_name:
                 self.telnet_command("?RGB" + source)
                 await asyncio.sleep(0.15)
@@ -140,20 +134,8 @@ class PioneerAmp():
         self.__display = ""
 
 
-    def updateRadioDisplay(self):
-        if self._current_radio_station > "":
-            self._artist = self._current_radio_station
-        if self._current_radio_frequency > "":
-            self._artist += " " + self._current_radio_frequency
-        if self.current_radio_station in self._radio_stations_reversed.keys():
-            self._artist += " (" + \
-                self._radio_stations_reversed.get(self.current_radio_station) \
-                + ")"
-
-
     def parseData(self, data):
         msg = ""
-
         # Fluorescent display content
         if data[:2]=="FL":
             rest = data[2:]
@@ -232,22 +214,14 @@ class PioneerAmp():
         # Radio tuner preset number
         elif data[:2] == "PR":
             self._current_radio_station = data[2:5]
-            self._artist = self._current_radio_station
-            self.updateRadioDisplay()
-            _LOGGER.debug("Current radio station: " + \
-                self._current_radio_station)
+            _LOGGER.debug("Current radio station: " + self._current_radio_station)
 
         # Radio tuner frequency
         elif data[:2] == "FR":
             if data[2] == "A":
-                self._current_radio_frequency = "AM " + \
-                    str(int(data[3:8])) + "kHz"
+                self._current_radio_frequency = "AM " + str(int(data[3:8])) + "kHz"
             else:
-                self._current_radio_frequency = "FM " + \
-                    str(int(data[3:6])) + "." + data[6:8] + "MHz"
-
-            self._artist = self._current_radio_frequency
-            self.updateRadioDisplay()
+                self._current_radio_frequency = "FM " + str(int(data[3:6])) + "." + data[6:8] + "MHz"
             _LOGGER.debug("Current radio freq: "+self._current_radio_frequency)
 
         # Model name
@@ -373,8 +347,7 @@ class PioneerAmp():
         # Sound mode
         elif data[:2] == "SR":
             self._current_sound_mode = data[2:6]
-            _LOGGER.debug("Sound mode: " + \
-                LISTENING_MODES[self._current_sound_mode])
+            _LOGGER.debug("Sound mode: " + LISTENING_MODES[self._current_sound_mode])
 
         else:
             print (data)
