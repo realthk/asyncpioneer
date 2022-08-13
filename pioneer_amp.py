@@ -120,7 +120,8 @@ class PioneerAmp():
         hasNames = True
         for source in DEFAULT_SOURCES:
             if source not in self._source_number_to_name:
-                self.telnet_command("?RGB" + source)
+                _LOGGER.debug(f"Missing name for '{source}'")
+                await self.telnet_command("?RGB" + source)
                 await asyncio.sleep(0.15)
                 hasNames = False
         self.hasNames = hasNames
@@ -364,7 +365,7 @@ class PioneerAmp():
         return msg
 
 
-    def telnet_command(self, command):
+    async def telnet_command(self, command):
         _LOGGER.debug(f"Command: " + command)
 
         if self.hasConnection:
@@ -372,17 +373,16 @@ class PioneerAmp():
                 _LOGGER.error("No writer available")
                 self.hasConnection = False
                 return
-
             try:
-                 self.writer.write(command.encode("ASCII") + b"\r")
-                 if self.serial_bridge:
-                    sleep(0.1)
+                self.writer.write(command.encode("ASCII") + b"\r")
+                if self.serial_bridge:
+                    await asyncio.sleep(0.1)
             except (ConnectionRefusedError, OSError):
-                _LOGGER.error("Pioneer %s refused connection!", self._name)
+                _LOGGER.error("Pioneer amp refused connection!")
                 self.hasConnection = False
                 return
             except:
-                _LOGGER.error("Pioneer %s lost connection!", self._name)
+                _LOGGER.error("Lost connection with Pioneer amp!")
                 self.hasConnection = False
                 self.clearDisplay()
         return

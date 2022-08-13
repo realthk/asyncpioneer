@@ -5,6 +5,7 @@ from .const import *
 
 import voluptuous as vol
 
+from homeassistant.core import ServiceCall
 from homeassistant.components.media_player import PLATFORM_SCHEMA
 
 from homeassistant.components.media_player.const import (
@@ -135,7 +136,7 @@ async def async_setup_platform(hass, config, async_add_entities, \
     hass.loop.create_task(pioneer.readdata())
 
 
-    async def async_service_handler(service):
+    async def async_service_handler(service: ServiceCall) -> None:
         """Handle for services."""
         entity_ids = service.data.get(ATTR_ENTITY_ID)
         if entity_ids:
@@ -147,27 +148,27 @@ async def async_setup_platform(hass, config, async_add_entities, \
         for device in devices:
             if service.service == SERVICE_SELECT_SPEAKER:
                 speaker = service.data.get(ATTR_SPEAKER)
-                device.select_speaker(speaker)
+                await device.async_select_speaker(speaker)
 
             if service.service == SERVICE_SELECT_SPEAKER_CONFIG:
                 speaker_config = service.data.get(ATTR_SPEAKER_CONFIG)
-                device.select_speaker_config(speaker_config)
+                await device.async_select_speaker_config(speaker_config)
 
             if service.service == SERVICE_SELECT_RADIO_STATION:
                 station = service.data.get(ATTR_STATION)
-                device.select_radio_station(station)
+                await device.async_select_radio_station(station)
 
             if service.service == SERVICE_DIM_DISPLAY:
                 dim_display = service.data.get(ATTR_DIM_DISPLAY)
-                device.dim_display(dim_display)
+                await device.async_dim_display(dim_display)
 
             if service.service == SERVICE_SELECT_HDMI_OUT:
                 hdmi_out = service.data.get(ATTR_HDMI_OUT)
-                device.select_hdmi_out(hdmi_out)
+                await device.async_select_hdmi_out(hdmi_out)
 
             if service.service == SERVICE_SELECT_SOUND_MODE:
                 sound_mode = service.data.get(ATTR_SOUND_MODE)
-                device.select_sound_mode(sound_mode)
+                await device.async_select_sound_mode(sound_mode)
 
             device.async_schedule_update_ha_state(True)
 

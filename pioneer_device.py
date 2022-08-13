@@ -8,7 +8,7 @@ from homeassistant.components.media_player import MediaPlayerEntity
 from homeassistant.components.media_player.const import (
     SUPPORT_PAUSE, SUPPORT_PLAY, SUPPORT_SELECT_SOURCE,
     SUPPORT_TURN_OFF, SUPPORT_TURN_ON, SUPPORT_VOLUME_MUTE, SUPPORT_VOLUME_SET,
-    MEDIA_TYPE_MUSIC, SUPPORT_PLAY_MEDIA, DOMAIN,
+    MEDIA_TYPE_MUSIC, SUPPORT_PLAY_MEDIA,
     SUPPORT_NEXT_TRACK, SUPPORT_PREVIOUS_TRACK,
     ATTR_APP_ID,
     ATTR_APP_NAME,
@@ -106,7 +106,7 @@ class PioneerDevice(MediaPlayerEntity):
         _LOGGER.debug(f"{self._zone} Update")
 
         if not self._amp.hasDeviceName:
-            self._amp.telnet_command("?RGD")
+            await self._amp.telnet_command("?RGD")
 
         if not self._amp.hasNames and self._zone=="Main":
             await asyncio.sleep(1)
@@ -114,32 +114,32 @@ class PioneerDevice(MediaPlayerEntity):
 
         # Power state?
         commands = ["?P", "?AP", "?ZEP"]
-        self._amp.telnet_command(commands[self._zone_index])
+        await self._amp.telnet_command(commands[self._zone_index])
 
         if self._power:
             # Volume?
             commands = ["?V", "?ZV", "?HZV"]
-            self._amp.telnet_command(commands[self._zone_index])
+            await self._amp.telnet_command(commands[self._zone_index])
 
             # Muted?
             commands = ["?M", "?Z2M", "?HZM"]
-            self._amp.telnet_command(commands[self._zone_index])
+            await self._amp.telnet_command(commands[self._zone_index])
 
             # Input source?
             commands = ["?F", "?ZS", "?ZEA"]
-            self._amp.telnet_command(commands[self._zone_index])
+            await self._amp.telnet_command(commands[self._zone_index])
 
             if self._zone == "Main":
                 # Speaker?
-                self._amp.telnet_command("?SPK")
+                await self._amp.telnet_command("?SPK")
 
             if self._selected_source_id == SOURCE_ID_TUNER:
-                self._amp.telnet_command("?PR")  # Tuner preset?
-                self._amp.telnet_command("?FR")  # Tuner frequency?
+                await self._amp.telnet_command("?PR")  # Tuner preset?
+                await self._amp.telnet_command("?FR")  # Tuner frequency?
             else:
-                self._amp.telnet_command("?HO")  # HDMI out?
+                await self._amp.telnet_command("?HO")  # HDMI out?
 
-            self._amp.telnet_command("?S")       # Sound mode?
+            await self._amp.telnet_command("?S")       # Sound mode?
 
         return True
 
@@ -256,7 +256,7 @@ class PioneerDevice(MediaPlayerEntity):
             return LISTENING_MODES[self._amp._current_sound_mode]
         return ""
 
-    def media_play(self):
+    async def async_media_play(self):
         """Start or resume playback on current source."""
         command = ""
         if self._selected_source_id == SOURCE_ID_TUNER:
@@ -271,12 +271,12 @@ class PioneerDevice(MediaPlayerEntity):
             command = "10NW"
 
         if command>"":
-            self._amp.telnet_command(command)
+            await self._amp.telnet_command(command)
             self._amp.clearDisplay()
         else:
-            _LOGGER.error("No play command for source %s",self._selected_source)
+            _LOGGER.error("No play command for source %s", self._selected_source_name)
 
-    def media_pause(self):
+    async def async_media_pause(self):
         """Pause playback on current source."""
         command = ""
         if self._selected_source_id == SOURCE_ID_TUNER:
@@ -291,11 +291,11 @@ class PioneerDevice(MediaPlayerEntity):
             command = "11NW"
 
         if command>"":
-            self._amp.telnet_command(command)
+            await self._amp.telnet_command(command)
         else:
-            _LOGGER.error("No pause command for source %s", self._amp._selected_source)
+            _LOGGER.error("No pause command for source %s", self._selected_source_name)
 
-    def media_previous_track(self):
+    async def async_media_previous_track(self):
         """Skip to previous track on current source."""
         command = ""
         if self._selected_source_id == SOURCE_ID_TUNER:
@@ -313,12 +313,12 @@ class PioneerDevice(MediaPlayerEntity):
             command = "12NW"
 
         if command>"":
-            self._amp.telnet_command(command)
+            await self._amp.telnet_command(command)
             self._amp.clearDisplay()
         else:
-            _LOGGER.error("No 'previous track' command for source %s", self._amp._selected_source)
+            _LOGGER.error("No 'previous track' command for source %s", self._selected_source_name)
 
-    def media_next_track(self):
+    async def async_media_next_track(self):
         """Skip to next track on current source."""
         command = ""
         if self._selected_source_id == SOURCE_ID_TUNER:
@@ -337,86 +337,85 @@ class PioneerDevice(MediaPlayerEntity):
             command = "13NW"
 
         if command>"":
-            self._amp.telnet_command(command)
+            await self._amp.telnet_command(command)
             self._amp.clearDisplay()
         else:
-            _LOGGER.error("No 'next track' command for source %s", \
-                self._selected_source_name)
+            _LOGGER.error("No 'next track' command for source %s", self._selected_source_name)
 
-    def turn_off(self):
+    async def async_turn_off(self):
         """Turn off media player."""
         _LOGGER.debug(f"{self._zone} Turn off ")
         self._amp.clearDisplay()
         commands = ["PF", "APF", "ZEF"]
-        self._amp.telnet_command(commands[self._zone_index])
+        await self._amp.telnet_command(commands[self._zone_index])
 
-    def volume_up(self):
+    async def async_volume_up(self):
         """Volume up media player."""
         _LOGGER.debug("Volume up ")
         commands = ["VU", "ZU", "HZU"]
-        self._amp.telnet_command(commands[self._zone_index])
+        await self._amp.telnet_command(commands[self._zone_index])
 
-    def volume_down(self):
+    async def async_volume_down(self):
         """Volume down media player."""
         _LOGGER.debug("Volume down ")
         commands = ["VD", "ZD", "HZD"]
-        self._amp.telnet_command(commands[self._zone_index])
+        await self._amp.telnet_command(commands[self._zone_index])
 
-    def set_volume_level(self, volume):
+    async def async_set_volume_level(self, volume):
         """Set volume level, range 0..1."""
         # 60dB max
         if self._zone == "Main":
             _LOGGER.debug("Set volume to "+str(volume) \
                 +", so to "+str(round(volume * MAX_VOLUME)).zfill(3)+"VL")
-            self._amp.telnet_command(str(round(volume * MAX_VOLUME)).zfill(3) + "VL")
+            await self._amp.telnet_command(str(round(volume * MAX_VOLUME)).zfill(3) + "VL")
         elif self._zone == "Zone2":
             _LOGGER.debug("Set Zone2 volume to "+str(volume) \
                 +", so to ZV"+str(round(volume * MAX_ZONE_VOLUME)).zfill(2))
-            self._amp.telnet_command(str(round(volume * MAX_ZONE_VOLUME)).zfill(2) + "ZV")
+            await self._amp.telnet_command(str(round(volume * MAX_ZONE_VOLUME)).zfill(2) + "ZV")
         elif self._zone == "HDZone":
             _LOGGER.debug("Set HDZone volume to "+str(volume) \
                 +", so to "+str(round(volume * MAX_ZONE_VOLUME)).zfill(2)+"HZV")
-            self._amp.telnet_command(str(round(volume * MAX_ZONE_VOLUME)).zfill(2) + "HZV")
+            await self._amp.telnet_command(str(round(volume * MAX_ZONE_VOLUME)).zfill(2) + "HZV")
 
-    def mute_volume(self, mute):
+    async def async_mute_volume(self, mute):
         """Mute (true) or unmute (false) media player."""
         if self._zone == "Main":
-            self._amp.telnet_command("MO" if mute else "MF")
+            await self._amp.telnet_command("MO" if mute else "MF")
         elif self._zone == "Zone2":
-            self._amp.telnet_command("Z2MO" if mute else "Z2MF")
+            await self._amp.telnet_command("Z2MO" if mute else "Z2MF")
         elif self._zone == "HDZone":
-            self._amp.telnet_command("HZMO" if mute else "HZMF")
+            await self._amp.telnet_command("HZMO" if mute else "HZMF")
 
-    def turn_on(self):
+    async def async_turn_on(self):
         """Turn the media player on."""
         _LOGGER.debug(f"{self._zone} Turn on ")
         self._amp.clearDisplay()
         commands = ["PO", "APO", "ZEO"]
-        self._amp.telnet_command(commands[self._zone_index])
+        await self._amp.telnet_command(commands[self._zone_index])
 
-    def select_source(self, source):
+    async def async_select_source(self, source):
         """Select input source."""
         if source in self._amp._source_name_to_number:
             commands = ["FN", "ZS", "ZEA"]
-            self._amp.telnet_command(self._amp._source_name_to_number.get(source) + commands[self._zone_index])
+            await self._amp.telnet_command(self._amp._source_name_to_number.get(source) + commands[self._zone_index])
             self._amp.clearDisplay()
         else:
             _LOGGER.error("Unknown input '%s'", source)
 
-    def select_speaker(self, speaker):
+    async def async_select_speaker(self, speaker):
         """Select output speaker."""
         if speaker in ACCEPTED_SPEAKER_VALUES:
             index = ACCEPTED_SPEAKER_VALUES.index(speaker)
-            self._amp.telnet_command(str(index+1)+"SPK")
+            await self._amp.telnet_command(str(index+1)+"SPK")
 
-    def select_speaker_config(self, speaker_config):
+    async def async_select_speaker_config(self, speaker_config):
         """Select speaker config mode."""
         _LOGGER.debug(f"Speaker config '{speaker_config}'")
         if speaker_config in ACCEPTED_SPEAKER_CONFIG_VALUES:
             index = ACCEPTED_SPEAKER_CONFIG_VALUES.index(speaker_config)
-            self._amp.telnet_command("0"+str(index)+"SSF")
+            await self._amp.telnet_command("0"+str(index)+"SSF")
 
-    def select_radio_station(self, station):
+    async def async_select_radio_station(self, station):
         """Set radio tuner to the frequency of a named station in config."""
         if not len(self._amp._radio_stations) \
             or not station in self._amp._radio_stations.keys():
@@ -424,20 +423,19 @@ class PioneerDevice(MediaPlayerEntity):
         else:
             num = self._amp._radio_stations.get(station)
             if num > "":
-                self._amp.telnet_command(num + "PR")
+                await self._amp.telnet_command(num + "PR")
                 self._amp.clearDisplay()
-                _LOGGER.debug("Set radio preset to '%s' for station '%s'", \
-                    num, station)
+                _LOGGER.debug("Set radio preset to '%s' for station '%s'", num, station)
 
-    def select_hdmi_out(self, hdmi_out):
+    async def async_select_hdmi_out(self, hdmi_out):
         """Select hdmi output."""
         _LOGGER.debug("HDMI command received '%s'", hdmi_out)
         if hdmi_out in ACCEPTED_HDMI_OUT_VALUES:
             index = ACCEPTED_HDMI_OUT_VALUES.index(hdmi_out)
             _LOGGER.debug("HDMI command will be '%d'", index)
-            self._amp.telnet_command(str(index)+"HO")
+            await self._amp.telnet_command(str(index)+"HO")
 
-    def select_sound_mode(self, sound_mode):
+    async def async_select_sound_mode(self, sound_mode):
         """Select sound mode"""
         _LOGGER.debug("Sound mode command received '%s'", sound_mode)
         foundMode = False
@@ -445,13 +443,13 @@ class PioneerDevice(MediaPlayerEntity):
             if name == sound_mode:
                 foundMode = True
                 _LOGGER.debug("Sound mode command will be '%s'", code)
-                self._amp.telnet_command(code+"SR")
+                await self._amp.telnet_command(code+"SR")
         if not foundMode:
             _LOGGER.debug("Cannot find code for sound mode '%s'", sound_mode)
 
-    def dim_display(self, dim_display):
+    async def async_dim_display(self, dim_display):
         """Dims the display"""
-        self._amp.telnet_command(str(dim_display)+"SAA")
+        await self._amp.telnet_command(str(dim_display)+"SAA")
 
     @property
     def state_attributes(self):

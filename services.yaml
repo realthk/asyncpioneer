@@ -1,0 +1,194 @@
+pioneer_dim_display:
+  name: Pioneer dim display
+  description: Dim display of amp in 4 steps.
+  fields:
+    entity_id:
+      name: Entity
+      description: Name of the asyncpioneer entity.
+      required: true
+      selector:
+        entity:
+          integration: asyncpioneer
+          domain: media_player
+    dim_display:
+      name: Dim value
+      description: Dim to what value (0-3, where 0 is max brightness, 3 is off).
+      required: true
+      example: 2
+      selector:
+        number:
+          min: 0
+          max: 3
+          step: 1
+
+pioneer_select_speaker:
+  name: Select speaker
+  description: Select output speaker A, B or A+B.
+  fields:
+    entity_id:
+      name: Entity
+      description: Name of the asyncpioneer entity to change speaker output on.
+      required: true
+      selector:
+        entity:
+          integration: asyncpioneer
+          domain: media_player
+    speaker:
+      name: Selected speaker
+      description: Name of the speaker to switch to.
+      required: true
+      example: "A"
+      selector:
+        select:
+          options:
+            - "A"
+            - "B"
+            - "A+B"
+
+pioneer_select_hdmi_out:
+  name: Select HDMI out
+  description: Select HDMI out.
+  fields:
+    entity_id:
+      name: Entity
+      description: Name of the asyncpioneer entity to change HDMI output on.
+      required: true
+      selector:
+        entity:
+          integration: asyncpioneer
+          domain: media_player
+    hdmi_out:
+      name: Selected HDMI out
+      description: Name of the selected HDMI out.
+      required: true
+      example: "1+2 ON"
+      selector:
+        select:
+          options:
+            - "1+2 ON"
+            - "1 ON"
+            - "2 ON"
+            - "1/2 OFF"            
+
+pioneer_select_speaker_config:
+  name: Select speaker config
+  description: Select speaker config.
+  fields:
+    entity_id:
+      name: Entity
+      description: Name of the asyncpioneer entity to change speaker config on.
+      required: true
+      selector:
+        entity:
+          integration: asyncpioneer
+          domain: media_player
+    speaker_config:
+      name: Selected speaker config
+      description: Name of the speaker config to switch to.
+      required: true
+      example: "Zone 2"
+      selector:
+        select:
+          options:
+            - "Height"
+            - "Wide"
+            - "SPK B"
+            - "Bi Amp"
+            - "Zone 2"
+            - "HDZone"      
+
+pioneer_select_radio_station:
+  name: Select radio tuner station
+  description: Select radio tuner station by name defined in configuration.
+  fields:
+    entity_id:
+      name: Entity
+      description: Name of the asyncpioneer entity.
+      required: true
+      selector:
+        entity:
+          integration: asyncpioneer
+          domain: media_player
+    station:
+      name: Radio station
+      description: Name of the radio station to switch to (defined in configuration.yaml).
+      required: true
+      example: "Szabadkai Rádió"
+      selector:
+        text:
+
+select_sound_mode:
+  name: Select sound mode
+  description: Select sound mode.
+  fields:
+    entity_id:
+      name: Entity
+      description: Name of the asyncpioneer entity to change sound mode on.
+      required: true
+      selector:
+        entity:
+          integration: asyncpioneer
+          domain: media_player
+    sound_mode:
+      name: Selected sound mode
+      description: Name of the sound mode to switch to.
+      required: true
+      example: "PURE DIRECT"
+      selector:
+        select:
+          options:
+            - "STEREO"
+            - "STANDARD"
+            - "STEREO"
+            - "2ch"
+            - "PRO LOGIC2 MOVIE"
+            - "PRO LOGIC2x MOVIE"
+            - "PRO LOGIC2 MUSIC"
+            - "PRO LOGIC2x MUSIC"
+            - "PRO LOGIC2 GAME"
+            - "PRO LOGIC2x GAME"
+            - "PRO LOGIC2z HEIGHT"
+            - "WIDE SURROUND MOVIE"
+            - "WIDE SURROUND MUSIC"
+            - "PRO LOGIC"
+            - "Neo:6 CINEMA"
+            - "Neo:6 MUSIC"
+            - "Neo:X CINEMA"
+            - "Neo:X MUSIC"
+            - "Neo:X GAME"
+            - "Dolby Surround"
+            - "Multi ch"
+            - "DOLBY EX"
+            - "PRO LOGIC2x MOVIE"
+            - "PRO LOGIC2x MUSIC"
+            - "PRO LOGIC2z HEIGHT"
+            - "WIDE SURROUND MOVIE"
+            - "WIDE SURROUND MUSIC"
+            - "DTS-ES Neo"
+            - "DTS-ES matrix"
+            - "DTS-ES discrete"
+            - "DTS-ES 8ch discrete"
+            - "Neo:X CINEMA "
+            - "Neo:X MUSIC"
+            - "Neo:X GAME"
+            - "Dolby Surround"
+            - "ADVANCED SURROUND"
+            - "ACTION"
+            - "DRAMA"
+            - "ADVANCED GAME"
+            - "SPORTS"
+            - "CLASSICAL"
+            - "ROCK/POP"
+            - "EXTENDED STEREO"
+            - "Front Stage Surround Advance"
+            - "ECO MODE"
+            - "ECO MODE 1"
+            - "ECO MODE 2"
+            - "RETRIEVER AIR"
+            - "PHONES SURROUND"
+            - "AUTO SURR/STREAM DIRECT"
+            - "AUTO SURROUND"
+            - "Auto Level Control"
+            - "DIRECT"
+            - "PURE DIRECT"
+            - "OPTIMUM SURROUND"
