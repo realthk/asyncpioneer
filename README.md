@@ -35,6 +35,22 @@ media_player:
        "Pannon Szabadka" : "C03"
        "Prvi Radio"      : "D05"
        "Hit FM Szabadka" : "D06"
+    inputs:
+      "01": CD
+      "02": Radio
+      "04": DVD
+      "05": TV
+      "06": SAT/CBL
+      "15": DVR/BDR
+      "17": Ipod
+      "25": BD
+      "33": Bluetooth
+      "38": Internet
+      "44": Media server
+      "45": Favorites
+      "47": DMR
+      "48": HDMI/MHL
+      "49": Game
     disabled_sources:
       - "HDMI 4"
       - "HDMI 5"
@@ -53,6 +69,9 @@ If this is set to eg. "B03", then sending a "next track" command when listening 
 
 **radio_stations**:
 You can name the stored stations here, because not every radio use RDS. Dictionary format.
+
+**inputs**:
+Mapping between input numbers and human readable names. Usually this mapping is automatically discovered by driver at startup. Use this section only if the amp doesn't support input names discovery or you want to override input names provided by amp. No discovery performed if this section is present in the configuration. The format for this section is standard dictionary. Please note that input numbers should be enclosed in parentheses.
 
 **disabled_sources**:
 A simple list to disable unwanted input sources, to make the source selector list shorter.
