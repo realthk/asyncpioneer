@@ -101,6 +101,7 @@ LISTENING_MODES = {
 	"0038": "Neo:X MUSIC",
 	"0039": "Neo:X GAME",
 	"0040": "Dolby Surround",
+	"0041": "Extended Stereo",
 	"0021": "Multi ch",
 	"0022": "DOLBY EX",
 	"0023": "PRO LOGIC2x MOVIE",
